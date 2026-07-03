@@ -3,238 +3,161 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Калькулятор ЗП для графіка 2/2 з деталізацією формул, рейтингу, рівня, нічних, Х2, стажу та податку." />
     <title>Калькулятор ЗП 2/2</title>
+    <meta
+      name="description"
+      content="Калькулятор зарплати для графіка 2/2 за ставками з 01.03.2026"
+    />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="page-shell">
-      <section class="hero">
-        <div class="hero__content">
-          <span class="eyebrow">Сервіс 2/2 · актуально з 01.03.2026</span>
-          <h1>Калькулятор зарплати з повною деталізацією</h1>
-          <p>
-            Вводиш години, рейтинг, рівень, нічні, Х2, штрафи й стаж — одразу бачиш суму до виплати,
-            податок для довідки та формулу кожного рядка.
-          </p>
-          <div class="hero-actions">
-            <button class="ghost-button" id="table-preset-button" type="button">Приклад з таблиці</button>
-            <button class="ghost-button" id="full-month-button" type="button">Повний місяць</button>
-          </div>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Актуально з 01.03.2026</p>
+          <h1>Калькулятор ЗП 2/2</h1>
         </div>
-        <div class="hero-card glass-card">
-          <span class="card-label">Загальна сума до виплати</span>
-          <strong id="total-net">—</strong>
-          <small>Чистими, за логікою активного аркуша</small>
+        <div class="top-actions">
+          <button class="ghost-button" id="resetButton" type="button">Скинути</button>
+          <button class="primary-button" id="copyButton" type="button">Копія</button>
+        </div>
+      </header>
+
+      <section class="summary-strip" aria-label="Підсумок">
+        <div class="summary-main">
+          <span>Загальна сума до виплати</span>
+          <strong id="totalNet">0 грн</strong>
+        </div>
+        <div>
+          <span>До виплати ЗП + стаж</span>
+          <strong id="totalGross">0 грн</strong>
+        </div>
+        <div>
+          <span>Податок 23%</span>
+          <strong id="totalTax">0 грн</strong>
+        </div>
+        <div>
+          <span>Норма</span>
+          <strong id="monthNorm">0 год</strong>
         </div>
       </section>
 
-      <section class="layout-grid">
-        <form id="salary-form" class="panel form-panel">
-          <div class="panel-heading">
-            <div>
-              <span class="eyebrow">Вхідні дані</span>
-              <h2>Параметри розрахунку</h2>
-            </div>
-            <button class="text-button" id="reset-button" type="button">Скинути</button>
+      <main class="workspace">
+        <section class="panel inputs-panel" aria-labelledby="inputTitle">
+          <div class="section-heading">
+            <p class="eyebrow">Дані</p>
+            <h2 id="inputTitle">Параметри розрахунку</h2>
           </div>
 
-          <div class="form-grid">
-            <label>
+          <form id="calculatorForm" class="form-grid">
+            <label class="field">
               <span>Місяць</span>
-              <select id="month" name="month"></select>
+              <select name="month" id="month"></select>
             </label>
 
-            <label>
+            <label class="field">
               <span>Фактичні години</span>
-              <input id="actualHours" name="actualHours" type="number" min="0" step="0.5" />
+              <input name="actualHours" type="number" min="0" step="0.5" inputmode="decimal" />
             </label>
 
-            <label class="checkbox-card">
-              <input id="testsAbove80" name="testsAbove80" type="checkbox" />
-              <span>
-                <strong>Тести більше 80%</strong>
-                <small>Додає +1 годину до розрахунку</small>
-              </span>
+            <label class="toggle-field">
+              <input name="testsHigh" type="checkbox" />
+              <span>Тести більше 80%</span>
             </label>
 
-            <label>
-              <span>Зона рейтингу</span>
-              <select id="ratingZone" name="ratingZone">
-                <option value="1">1 зона</option>
-                <option value="2">2 зона</option>
-                <option value="3">3 зона</option>
-                <option value="4">4 зона</option>
-                <option value="5">5 зона</option>
-              </select>
-            </label>
+            <div class="metric-tile">
+              <span>Години в розрахунку</span>
+              <strong id="effectiveHours">0</strong>
+            </div>
 
-            <label>
+            <fieldset class="field full">
+              <legend>Зона рейтингу</legend>
+              <div class="segmented" id="ratingZoneGroup"></div>
+            </fieldset>
+
+            <label class="field">
               <span>Кваліфікаційний рівень</span>
-              <select id="qualificationLevel" name="qualificationLevel">
-                <option value="1">1-й рівень</option>
-                <option value="2">2-й рівень</option>
-                <option value="3">3-й рівень</option>
-              </select>
+              <select name="level" id="level"></select>
             </label>
 
-            <label>
-              <span>Ваш оклад</span>
-              <input id="baseSalary" name="baseSalary" type="number" min="0" step="1" />
+            <label class="field">
+              <span>Оклад</span>
+              <input name="salary" type="number" min="0" step="1" inputmode="decimal" />
             </label>
 
-            <label>
+            <label class="field">
               <span>Нічні години</span>
-              <input id="nightHours" name="nightHours" type="number" min="0" step="0.5" />
+              <input name="nightHours" type="number" min="0" step="0.5" inputmode="decimal" />
             </label>
 
-            <label>
+            <label class="field">
               <span>Святкові години</span>
-              <input id="holidayHours" name="holidayHours" type="number" min="0" step="0.5" />
+              <input name="holidayHours" type="number" min="0" step="0.5" inputmode="decimal" />
             </label>
 
-            <label>
-              <span>Оплата Х2, год</span>
-              <input id="x2Hours" name="x2Hours" type="number" min="0" step="0.5" />
+            <label class="field">
+              <span>Оплата X2, години</span>
+              <input name="doubleHours" type="number" min="0" step="0.5" inputmode="decimal" />
             </label>
 
-            <label>
+            <label class="field">
               <span>Штрафи</span>
-              <input id="fines" name="fines" type="number" min="0" step="1" />
+              <input name="fines" type="number" min="0" step="1" inputmode="decimal" />
             </label>
 
-            <label>
-              <span>Монобрат/таксі</span>
-              <input id="compensationInput" name="compensationInput" type="number" min="0" step="1" />
+            <label class="field">
+              <span>Монобрат / таксі</span>
+              <input name="taxiAmount" type="number" min="0" step="1" inputmode="decimal" />
             </label>
 
-            <label>
-              <span>Стаж, повних років</span>
-              <input id="tenureYears" name="tenureYears" type="number" min="0" step="1" />
+            <label class="field">
+              <span>Стаж, років</span>
+              <input name="tenureYears" type="number" min="0" step="1" inputmode="numeric" />
             </label>
+          </form>
+        </section>
 
-            <label>
-              <span>Метод премії «Стаж»</span>
-              <select id="tenureMode" name="tenureMode">
-                <option value="dynamic">Автоматично від поточної бази</option>
-                <option value="sheetFixed">Як в активному аркуші: 29 991 грн</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Податок, %</span>
-              <input id="taxRate" name="taxRate" type="number" min="0" step="0.1" />
-            </label>
-
-            <label>
-              <span>Дільник Монобрат/таксі</span>
-              <input id="compensationDivisor" name="compensationDivisor" type="number" min="1" step="0.1" />
-            </label>
-          </div>
-        </form>
-
-        <aside class="panel results-panel">
-          <div class="panel-heading">
+        <section class="result-stack" aria-label="Результати">
+          <div class="visual-panel">
+            <img src="./assets/payroll-dashboard.png" alt="" />
             <div>
-              <span class="eyebrow">Підсумок</span>
-              <h2>Що виходить</h2>
-            </div>
-            <button class="primary-button" id="copy-button" type="button">Скопіювати</button>
-          </div>
-
-          <div class="kpi-grid">
-            <article class="kpi-card main-kpi">
-              <span>До виплати</span>
-              <strong id="salary-net">—</strong>
-              <small>без премії «Стаж»</small>
-            </article>
-            <article class="kpi-card">
-              <span>Премія «Стаж»</span>
-              <strong id="tenure-net">—</strong>
-            </article>
-            <article class="kpi-card">
-              <span>Податок</span>
-              <strong id="tax-amount">—</strong>
-            </article>
-            <article class="kpi-card">
-              <span>Сума + податок</span>
-              <strong id="gross-reference">—</strong>
-            </article>
-            <article class="kpi-card wide">
-              <span>Погодинна база</span>
-              <strong id="hourly-rate">—</strong>
-            </article>
-          </div>
-
-          <div class="mini-grid">
-            <div><span>Норма</span><strong id="norm-hours">—</strong></div>
-            <div><span>Оплачувані години</span><strong id="paid-hours">—</strong></div>
-            <div><span>Бонус тестів</span><strong id="test-bonus-hours">—</strong></div>
-            <div><span>Рейтинг</span><strong id="rating-bonus">—</strong></div>
-            <div><span>Кваліфікація</span><strong id="qualification-bonus">—</strong></div>
-            <div><span>Стаж %</span><strong id="tenure-rate">—</strong></div>
-          </div>
-        </aside>
-      </section>
-
-      <section class="details-grid">
-        <div class="panel">
-          <div class="panel-heading">
-            <div>
-              <span class="eyebrow">Деталізація</span>
-              <h2>Розкладка по рядках</h2>
+              <p class="eyebrow">Сервіс</p>
+              <h2>2/2</h2>
             </div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Компонент</th>
-                  <th>Сума</th>
-                </tr>
-              </thead>
-              <tbody id="breakdown-body"></tbody>
-            </table>
-          </div>
-        </div>
 
-        <div class="panel">
-          <div class="panel-heading">
-            <div>
-              <span class="eyebrow">Графік</span>
-              <h2>Що найбільше впливає</h2>
+          <section class="panel result-panel" aria-labelledby="resultTitle">
+            <div class="section-heading">
+              <p class="eyebrow">Результат</p>
+              <h2 id="resultTitle">Деталізація</h2>
             </div>
-          </div>
-          <div id="parts-chart" class="parts-chart"></div>
-        </div>
-      </section>
 
-      <section class="panel formula-panel">
-        <div class="panel-heading">
-          <div>
-            <span class="eyebrow">Формули</span>
-            <h2>Як саме рахується</h2>
-          </div>
-        </div>
-        <div id="formula-list" class="formula-list"></div>
-      </section>
+            <div class="result-grid">
+              <article>
+                <span>До виплати ЗП</span>
+                <strong id="baseNet">0 грн</strong>
+              </article>
+              <article>
+                <span>Премія стаж</span>
+                <strong id="tenureNet">0 грн</strong>
+              </article>
+              <article>
+                <span>Ставка рейтингу</span>
+                <strong id="ratingBonus">0 грн</strong>
+              </article>
+              <article>
+                <span>Доплата рівня</span>
+                <strong id="levelBonus">0 грн</strong>
+              </article>
+            </div>
 
-      <section class="panel notes-panel">
-        <div class="panel-heading">
-          <div>
-            <span class="eyebrow">Перевірка</span>
-            <h2>Попередження та нюанси</h2>
-          </div>
-        </div>
-        <ul id="warnings" class="warnings"></ul>
-        <p class="fine-print">
-          Логіка перенесена з активного аркуша таблиці. Це внутрішній калькулятор для попереднього підрахунку,
-          не офіційний розрахунковий лист.
-        </p>
-      </section>
-    </main>
+            <div class="breakdown" id="breakdown"></div>
+            <p class="status" id="statusMessage" role="status"></p>
+          </section>
+        </section>
+      </main>
+    </div>
 
-    <div id="result-toast" class="toast" role="status" aria-live="polite"></div>
     <script type="module" src="./app.js"></script>
   </body>
 </html>

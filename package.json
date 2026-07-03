@@ -1,16 +1,10 @@
 {
-  "name": "zp-22-calculator",
+  "name": "zp-2-2-calculator",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "python3 -m http.server 5173",
-    "test": "node tests/calculator.test.js"
-  },
-  "keywords": [
-    "salary",
-    "calculator",
-    "static-site"
-  ],
-  "license": "UNLICENSED"
+    "dev": "python3 -m http.server 4173 --bind 127.0.0.1",
+    "verify": "node scripts/verify.mjs"
+  }
 }
