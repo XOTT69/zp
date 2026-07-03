@@ -101,7 +101,7 @@ export const ACCESS_CONFIG = {
   },
   supervisor: {
     label: "СВ",
-    code: "sv2026",
+    code: "ogo@2026",
     allowedCalculators: ["service", "supervisor"]
   }
 };
