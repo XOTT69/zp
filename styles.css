@@ -83,6 +83,10 @@ h2 {
   gap: 10px;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .primary-button,
 .ghost-button {
   min-height: 42px;
@@ -118,6 +122,81 @@ h2 {
   border-radius: 8px;
   background: var(--line);
   box-shadow: var(--shadow);
+}
+
+.home-view {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.home-copy,
+.choice-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.home-copy {
+  display: grid;
+  align-content: center;
+  min-height: 260px;
+  padding: 28px;
+}
+
+.home-copy h2 {
+  max-width: 420px;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1;
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.choice-card {
+  display: grid;
+  align-content: end;
+  min-height: 260px;
+  padding: 24px;
+  color: var(--ink);
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.choice-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(22, 106, 77, 0.48);
+  box-shadow: 0 26px 70px rgba(28, 40, 56, 0.16);
+}
+
+.choice-card span {
+  width: fit-content;
+  margin-bottom: 18px;
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  font-weight: 850;
+}
+
+.choice-card strong {
+  margin-bottom: 8px;
+  font-size: clamp(1.4rem, 3vw, 2.1rem);
+  line-height: 1.05;
+}
+
+.choice-card small {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
 }
 
 .summary-strip > div {
@@ -156,6 +235,7 @@ h2 {
   grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
   gap: 18px;
   align-items: start;
+  min-width: 0;
 }
 
 .panel {
@@ -279,11 +359,13 @@ h2 {
 .result-stack {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .visual-panel {
   position: relative;
   overflow: hidden;
+  min-width: 0;
   min-height: 180px;
   border-radius: 8px;
   color: #ffffff;
@@ -295,6 +377,7 @@ h2 {
   position: absolute;
   inset: 0;
   width: 100%;
+  max-width: 100%;
   height: 100%;
   object-fit: cover;
   opacity: 0.92;
@@ -374,6 +457,180 @@ h2 {
   font-weight: 750;
 }
 
+.notice-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.notice {
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.notice.info {
+  color: #25506c;
+  background: #e9f3fb;
+}
+
+.notice.warning {
+  color: #7a4a0b;
+  background: #fff2d7;
+}
+
+.notice.success {
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.formula-panel,
+.report-panel,
+.scenario-panel {
+  margin-top: 16px;
+}
+
+.formula-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.formula-panel summary {
+  padding: 12px 14px;
+  color: var(--ink);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.formula-row {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.formula-row strong {
+  font-size: 0.92rem;
+}
+
+.formula-row span {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.report-panel {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.report-header {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  background: var(--panel-soft);
+}
+
+.report-header span {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.report-header strong {
+  font-size: 1.15rem;
+}
+
+.report-table {
+  display: grid;
+}
+
+.report-table > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+}
+
+.report-table > div + div {
+  border-top: 1px solid var(--line);
+}
+
+.report-table span {
+  color: var(--muted);
+}
+
+.scenario-panel {
+  padding: 18px;
+}
+
+.scenario-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.scenario-list {
+  display: grid;
+  gap: 10px;
+}
+
+.empty-state {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.scenario-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.scenario-item > div:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.scenario-item span,
+.scenario-item small {
+  color: var(--muted);
+}
+
+.scenario-item strong {
+  font-size: 1.05rem;
+}
+
+.scenario-delta {
+  align-self: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 850;
+}
+
+.scenario-delta.positive {
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.scenario-delta.negative {
+  color: var(--danger);
+  background: #fde8e8;
+}
+
 @media (max-width: 860px) {
   .shell {
     width: min(100% - 20px, 720px);
@@ -381,6 +638,7 @@ h2 {
   }
 
   .topbar,
+  .home-view,
   .workspace {
     grid-template-columns: 1fr;
   }
@@ -396,6 +654,7 @@ h2 {
 
 @media (max-width: 560px) {
   .top-actions,
+  .choice-grid,
   .form-grid,
   .result-grid,
   .summary-strip {
@@ -415,5 +674,71 @@ h2 {
     align-items: flex-start;
     flex-direction: column;
     gap: 6px;
+  }
+
+  .scenario-actions,
+  .scenario-item,
+  .report-table > div {
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-item,
+  .report-table > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  .shell {
+    width: 100%;
+    padding: 0;
+  }
+
+  .top-actions,
+  .home-view,
+  .inputs-panel,
+  .visual-panel,
+  .scenario-panel,
+  .formula-panel,
+  .status {
+    display: none !important;
+  }
+
+  .topbar,
+  .workspace,
+  .summary-strip {
+    display: block;
+  }
+
+  .topbar,
+  .summary-strip,
+  .panel,
+  .report-panel {
+    box-shadow: none;
+  }
+
+  .summary-strip {
+    margin-bottom: 14px;
+    border: 1px solid #cccccc;
+  }
+
+  .summary-strip > div {
+    border-bottom: 1px solid #dddddd;
+  }
+
+  .result-panel {
+    border: 0;
+    padding: 0;
+  }
+
+  .breakdown,
+  .result-grid {
+    break-inside: avoid;
   }
 }

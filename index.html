@@ -8,32 +8,53 @@
       name="description"
       content="Калькулятор зарплати для графіка 2/2 за ставками з 01.03.2026"
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=3" />
   </head>
   <body>
     <div class="shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Актуально з 01.03.2026</p>
-          <h1>Калькулятор ЗП 2/2</h1>
+          <p class="eyebrow" id="appEyebrow">Актуально з 01.03.2026</p>
+          <h1 id="appTitle">Калькулятор ЗП</h1>
         </div>
         <div class="top-actions">
+          <button class="ghost-button" id="homeButton" type="button">Вибір</button>
           <button class="ghost-button" id="resetButton" type="button">Скинути</button>
           <button class="primary-button" id="copyButton" type="button">Копія</button>
+          <button class="primary-button" id="printButton" type="button">PDF</button>
         </div>
       </header>
 
-      <section class="summary-strip" aria-label="Підсумок">
+      <section class="home-view" id="homeView" aria-labelledby="homeTitle">
+        <div class="home-copy">
+          <p class="eyebrow">Виберіть розрахунок</p>
+          <h2 id="homeTitle">Яку зарплату рахуємо?</h2>
+        </div>
+        <div class="choice-grid">
+          <a class="choice-card" href="#service">
+            <span>Оператор сервісу</span>
+            <strong>ЗП сервісу 2/2</strong>
+            <small>Рейтинг, рівень, нічні, X2, стаж</small>
+          </a>
+          <a class="choice-card" href="#supervisor">
+            <span>СВ</span>
+            <strong>ЗП СВ 2/2</strong>
+            <small>+15%, WOW-кейси, податки, стаж</small>
+          </a>
+        </div>
+      </section>
+
+      <section class="summary-strip" id="summaryStrip" aria-label="Підсумок">
         <div class="summary-main">
-          <span>Загальна сума до виплати</span>
+          <span id="totalMainLabel">Загальна сума до виплати</span>
           <strong id="totalNet">0 грн</strong>
         </div>
         <div>
-          <span>До виплати ЗП + стаж</span>
+          <span id="totalGrossLabel">До виплати ЗП + стаж</span>
           <strong id="totalGross">0 грн</strong>
         </div>
         <div>
-          <span>Податок 23%</span>
+          <span id="totalTaxLabel">Податок 23%</span>
           <strong id="totalTax">0 грн</strong>
         </div>
         <div>
@@ -42,7 +63,7 @@
         </div>
       </section>
 
-      <main class="workspace">
+      <main class="workspace" id="calculatorView">
         <section class="panel inputs-panel" aria-labelledby="inputTitle">
           <div class="section-heading">
             <p class="eyebrow">Дані</p>
@@ -100,6 +121,11 @@
               <input name="doubleHours" type="number" min="0" step="0.5" inputmode="decimal" />
             </label>
 
+            <label class="field mode-field" data-mode="supervisor">
+              <span>WOW-кейси</span>
+              <input name="wowCases" type="number" min="0" max="5" step="1" inputmode="numeric" />
+            </label>
+
             <label class="field">
               <span>Штрафи</span>
               <input name="fines" type="number" min="0" step="1" inputmode="decimal" />
@@ -115,6 +141,8 @@
               <input name="tenureYears" type="number" min="0" step="1" inputmode="numeric" />
             </label>
           </form>
+
+          <div class="notice-list" id="validationMessages" aria-live="polite"></div>
         </section>
 
         <section class="result-stack" aria-label="Результати">
@@ -134,11 +162,11 @@
 
             <div class="result-grid">
               <article>
-                <span>До виплати ЗП</span>
+                <span id="baseResultLabel">До виплати ЗП</span>
                 <strong id="baseNet">0 грн</strong>
               </article>
               <article>
-                <span>Премія стаж</span>
+                <span id="tenureResultLabel">Премія стаж</span>
                 <strong id="tenureNet">0 грн</strong>
               </article>
               <article>
@@ -152,12 +180,29 @@
             </div>
 
             <div class="breakdown" id="breakdown"></div>
+            <details class="formula-panel" open>
+              <summary>Як пораховано</summary>
+              <div id="formulaList"></div>
+            </details>
+            <div class="report-panel" id="reportPanel"></div>
             <p class="status" id="statusMessage" role="status"></p>
+          </section>
+
+          <section class="panel scenario-panel" aria-labelledby="scenarioTitle">
+            <div class="section-heading">
+              <p class="eyebrow">Сценарії</p>
+              <h2 id="scenarioTitle">Порівняння</h2>
+            </div>
+            <div class="scenario-actions">
+              <button class="ghost-button" id="addScenarioButton" type="button">Додати сценарій</button>
+              <button class="ghost-button" id="clearScenariosButton" type="button">Очистити</button>
+            </div>
+            <div class="scenario-list" id="scenarioList"></div>
           </section>
         </section>
       </main>
     </div>
 
-    <script type="module" src="./app.js"></script>
+    <script type="module" src="./app.js?v=3"></script>
   </body>
 </html>
