@@ -726,12 +726,12 @@ h2 {
 
 .payment-card {
   display: grid;
-  gap: 7px;
+  gap: 10px;
   min-width: 0;
   padding: 13px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbfa 100%);
 }
 
 .payment-card span {
@@ -749,6 +749,25 @@ h2 {
 .payment-card small {
   color: var(--muted);
   line-height: 1.35;
+}
+
+.payment-parts {
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.payment-parts div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.payment-parts b {
+  flex: 0 0 auto;
+  font-size: 0.88rem;
 }
 
 .absence-grid {

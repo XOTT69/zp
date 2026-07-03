@@ -290,14 +290,15 @@ function readInputs() {
     nightHours: data.get("nightHours"),
     holidayHours: data.get("holidayHours"),
     doubleHours: data.get("doubleHours"),
-    wowCases: data.get("wowCases"),
+    wowCases: calculatorType === "supervisor" ? data.get("wowCases") : 0,
     fines: data.get("fines"),
     taxiAmount: data.get("taxiAmount"),
     tenureYears: data.get("tenureYears"),
     firstHalfHours: data.get("firstHalfHours"),
     secondHalfHours: data.get("secondHalfHours"),
     ratingFirstPart: defaults.ratingFirstPart,
-    averageDailyPay: data.get("averageDailyPay"),
+    annualIncome: data.get("annualIncome"),
+    absenceCalendarDays: data.get("absenceCalendarDays"),
     vacationDays: data.get("vacationDays"),
     sickDays: data.get("sickDays"),
     sickInsuranceRate: data.get("sickInsuranceRate"),
@@ -441,32 +442,70 @@ function formulaRows(result) {
 function renderPaymentSchedule(result) {
   const schedule = result.paymentSchedule;
   const absence = result.absencePayments;
-  if (form.elements.ratingFirstPart) {
-    form.elements.ratingFirstPart.value = roundMoney(result.input.ratingFirstPart);
+  if (form.elements.averageDailyPay) {
+    form.elements.averageDailyPay.value = roundMoney(absence.averageDailyPay);
   }
   const rows = [
-    ["15 число", schedule.midMonthPay, "оклад за години до 15-го + 1 частина рейтингу + WOW для СВ"],
-    ["31 число", schedule.monthEndPay, "оклад за години 16-30/31"],
-    ["07 число", schedule.nextMonthRatingPay, "2 частина рейтингу, доплати, рівень та коригування"],
-    ["9/10 число", schedule.tenurePay, "Надбавка за стаж, якщо є"]
+    {
+      label: "15 число",
+      value: schedule.midMonthPay,
+      parts: [
+        ["Оклад за години до 15-го", schedule.midMonthParts.base],
+        ["1 частина рейтингу", schedule.midMonthParts.rating],
+        ...(calculatorType === "supervisor" ? [["WOW-кейси", schedule.midMonthParts.wow]] : [])
+      ]
+    },
+    {
+      label: "31 число",
+      value: schedule.monthEndPay,
+      parts: [["Оклад за години 16-30/31", schedule.monthEndParts.base]]
+    },
+    {
+      label: "07 число",
+      value: schedule.nextMonthRatingPay,
+      parts: [
+        ["2 частина рейтингу", schedule.nextMonthParts.rating],
+        ["Доплата рівня", schedule.nextMonthParts.level],
+        ["Доплати / утримання", schedule.nextMonthParts.extras],
+        ["Коригування годин", schedule.nextMonthParts.settlement]
+      ]
+    },
+    {
+      label: "9/10 число",
+      value: schedule.tenurePay,
+      parts: [["Надбавка за стаж", schedule.tenurePay]]
+    }
   ];
 
   paymentGrid.innerHTML = rows
     .map(
-      ([label, value, hint]) => `
+      (row) => `
         <article class="payment-card">
-          <span>${label}</span>
-          <strong>${formatCurrency(value)}</strong>
-          <small>${hint}</small>
+          <span>${row.label}</span>
+          <strong>${formatCurrency(row.value)}</strong>
+          <div class="payment-parts">
+            ${row.parts
+              .filter(([, value]) => Math.abs(value) > 0.004)
+              .map(
+                ([label, value]) => `
+                  <div>
+                    <small>${label}</small>
+                    <b>${formatCurrency(value)}</b>
+                  </div>
+                `
+              )
+              .join("")}
+          </div>
         </article>
       `
     )
     .join("");
 
   absenceGrid.innerHTML = [
-    ["Відпустка", absence.vacationPay, "середня ЗП за день * дні"],
-    ["Лікарняні", absence.sickPay, "середня ЗП за день * % стажу * дні"],
-    ["Декретні", absence.maternityPay, "середня ЗП за день * календарні дні"],
+    ["Середня за день", absence.averageDailyPay, "ЗП за 12 місяців / календарні дні"],
+    ["Відпустка", absence.vacationPay, "середня за день * дні відпустки"],
+    ["Лікарняні", absence.sickPay, "середня за день * % стажу * дні лікарняного"],
+    ["Декретні", absence.maternityPay, "середня за день * календарні дні"],
     ["Разом", absence.total, "орієнтовна сума окремих виплат"]
   ]
     .map(
@@ -499,6 +538,7 @@ function renderReport(result) {
     ["31 число", formatCurrency(result.paymentSchedule.monthEndPay)],
     ["07 число", formatCurrency(result.paymentSchedule.nextMonthRatingPay)],
     ["9/10 число стаж", formatCurrency(result.paymentSchedule.tenurePay)],
+    ["Середня ЗП за день", formatCurrency(result.absencePayments.averageDailyPay)],
     ["Відпустка/лікарняні/декретні", formatCurrency(result.absencePayments.total)]
   ];
 
@@ -638,6 +678,7 @@ function buildTextReport(result, config) {
     `31 число: ${formatCurrency(result.paymentSchedule.monthEndPay)}`,
     `07 число: ${formatCurrency(result.paymentSchedule.nextMonthRatingPay)}`,
     `9/10 число стаж: ${formatCurrency(result.paymentSchedule.tenurePay)}`,
+    `Середня ЗП за день: ${formatCurrency(result.absencePayments.averageDailyPay)}`,
     `Відпустка/лікарняні/декретні: ${formatCurrency(result.absencePayments.total)}`,
     `Години: ${roundMoney(result.effectiveHours)} / норма ${result.normHours}`,
     `Рейтинг: зона ${result.input.ratingZone}, ${formatCurrency(result.ratingBonus)}`,
@@ -673,7 +714,7 @@ function loadInputs(type) {
   try {
     const defaults = getDefaultInputs(type);
     const saved = JSON.parse(localStorage.getItem(storageKey(type))) ?? {};
-    if (type === "supervisor" && saved.firstHalfHours === 82.5 && saved.secondHalfHours === undefined) {
+    if (type === "supervisor" && Number(saved.firstHalfHours) === 82.5) {
       saved.firstHalfHours = defaults.firstHalfHours;
     }
     if (saved.secondHalfHours === undefined) {

@@ -264,7 +264,8 @@ function normalizeInputs(input, calculatorType) {
     firstHalfHours: Math.max(0, toNumber(valueOrDefault(input.firstHalfHours, defaults.firstHalfHours))),
     secondHalfHours: Math.max(0, toNumber(valueOrDefault(input.secondHalfHours, defaults.secondHalfHours))),
     ratingFirstPart,
-    averageDailyPay: Math.max(0, toNumber(input.averageDailyPay)),
+    annualIncome: Math.max(0, toNumber(input.annualIncome)),
+    absenceCalendarDays: Math.max(1, Math.floor(toNumber(valueOrDefault(input.absenceCalendarDays, defaults.absenceCalendarDays)))),
     vacationDays: Math.max(0, toNumber(input.vacationDays)),
     sickDays: Math.max(0, toNumber(input.sickDays)),
     sickInsuranceRate: Math.min(1, Math.max(0, toNumber(valueOrDefault(input.sickInsuranceRate, defaults.sickInsuranceRate)))),
@@ -308,16 +309,32 @@ function calculatePaymentSchedule(values, parts) {
     ratingSecondPart,
     levelPay,
     extras,
-    wowBonus: parts.wowBonus
+    wowBonus: parts.wowBonus,
+    midMonthParts: {
+      base: fixedAdvance,
+      rating: ratingFirstPart,
+      wow: parts.wowBonus
+    },
+    monthEndParts: {
+      base: fixedMonthEnd
+    },
+    nextMonthParts: {
+      rating: ratingSecondPart,
+      level: levelPay,
+      extras,
+      settlement: fixedSettlement
+    }
   };
 }
 
 function calculateAbsencePayments(values) {
-  const sickPay = values.averageDailyPay * values.sickInsuranceRate * values.sickDays;
-  const vacationPay = values.averageDailyPay * values.vacationDays;
-  const maternityPay = values.averageDailyPay * values.maternityDays;
+  const averageDailyPay = values.annualIncome / values.absenceCalendarDays;
+  const sickPay = averageDailyPay * values.sickInsuranceRate * values.sickDays;
+  const vacationPay = averageDailyPay * values.vacationDays;
+  const maternityPay = averageDailyPay * values.maternityDays;
 
   return {
+    averageDailyPay,
     sickPay,
     vacationPay,
     maternityPay,
