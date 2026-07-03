@@ -92,3 +92,16 @@ export const PAYROLL_CONFIG = {
     }
   }
 };
+
+export const ACCESS_CONFIG = {
+  operator: {
+    label: "Оператор",
+    code: "operator2026",
+    allowedCalculators: ["service"]
+  },
+  supervisor: {
+    label: "СВ",
+    code: "sv2026",
+    allowedCalculators: ["service", "supervisor"]
+  }
+};

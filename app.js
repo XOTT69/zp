@@ -7,9 +7,14 @@ import {
   getDefaultInputs,
   roundMoney
 } from "./calculator.js";
+import { ACCESS_CONFIG } from "./payroll-data.js";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
+const ACCESS_STORAGE_KEY = "zp-2-2-access-session";
 const form = document.querySelector("#calculatorForm");
+const accessView = document.querySelector("#accessView");
+const accessForm = document.querySelector("#accessForm");
+const accessError = document.querySelector("#accessError");
 const monthSelect = document.querySelector("#month");
 const levelSelect = document.querySelector("#level");
 const ratingZoneGroup = document.querySelector("#ratingZoneGroup");
@@ -21,6 +26,8 @@ const homeButton = document.querySelector("#homeButton");
 const resetButton = document.querySelector("#resetButton");
 const copyButton = document.querySelector("#copyButton");
 const printButton = document.querySelector("#printButton");
+const logoutButton = document.querySelector("#logoutButton");
+const roleBadge = document.querySelector("#roleBadge");
 const addScenarioButton = document.querySelector("#addScenarioButton");
 const clearScenariosButton = document.querySelector("#clearScenariosButton");
 const scenarioList = document.querySelector("#scenarioList");
@@ -31,6 +38,7 @@ const reportPanel = document.querySelector("#reportPanel");
 let calculatorType = getRouteType();
 let selectedRatingZone = getDefaultInputs(calculatorType || "service").ratingZone;
 let currentResult = null;
+let accessSession = loadAccessSession();
 
 init();
 
@@ -38,12 +46,14 @@ function init() {
   renderSelects();
   renderRoute();
 
+  accessForm.addEventListener("submit", handleAccessSubmit);
   form.addEventListener("input", update);
   form.addEventListener("change", update);
   ratingZoneGroup.addEventListener("click", handleRatingClick);
   resetButton.addEventListener("click", reset);
   copyButton.addEventListener("click", copySummary);
   printButton.addEventListener("click", printReport);
+  logoutButton.addEventListener("click", logout);
   addScenarioButton.addEventListener("click", addScenario);
   clearScenariosButton.addEventListener("click", clearScenarios);
   homeButton.addEventListener("click", () => {
@@ -53,9 +63,20 @@ function init() {
 }
 
 function renderRoute() {
+  if (!accessSession) {
+    renderAccessGate();
+    return;
+  }
+
   calculatorType = getRouteType();
+  if (calculatorType && !canAccessCalculator(calculatorType)) {
+    window.location.hash = firstAllowedCalculator();
+    return;
+  }
+
   const isHome = calculatorType === null;
 
+  accessView.hidden = true;
   homeView.hidden = !isHome;
   calculatorView.hidden = isHome;
   summaryStrip.hidden = isHome;
@@ -63,6 +84,10 @@ function renderRoute() {
   copyButton.hidden = isHome;
   printButton.hidden = isHome;
   homeButton.hidden = isHome;
+  logoutButton.hidden = false;
+  roleBadge.hidden = false;
+  roleBadge.textContent = ACCESS_CONFIG[accessSession.role].label;
+  renderAllowedChoices();
 
   if (isHome) {
     document.querySelector("#appTitle").textContent = "Калькулятор ЗП";
@@ -85,6 +110,78 @@ function renderRoute() {
   renderModeLabels();
   update();
   renderScenarios();
+}
+
+function renderAccessGate() {
+  accessView.hidden = false;
+  homeView.hidden = true;
+  calculatorView.hidden = true;
+  summaryStrip.hidden = true;
+  resetButton.hidden = true;
+  copyButton.hidden = true;
+  printButton.hidden = true;
+  homeButton.hidden = true;
+  logoutButton.hidden = true;
+  roleBadge.hidden = true;
+  document.querySelector("#appTitle").textContent = "Калькулятор ЗП";
+  document.querySelector("#appEyebrow").textContent = "Потрібен код доступу";
+}
+
+function handleAccessSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(accessForm);
+  const role = formData.get("role");
+  const code = formData.get("code");
+  const config = ACCESS_CONFIG[role];
+
+  if (!config || config.code !== code) {
+    accessError.textContent = "Невірний код доступу.";
+    return;
+  }
+
+  accessSession = {
+    role,
+    loggedAt: Date.now()
+  };
+  localStorage.setItem(ACCESS_STORAGE_KEY, JSON.stringify(accessSession));
+  accessError.textContent = "";
+  accessForm.reset();
+
+  if (!getRouteType() || !canAccessCalculator(getRouteType())) {
+    window.location.hash = firstAllowedCalculator();
+  }
+  renderRoute();
+}
+
+function logout() {
+  accessSession = null;
+  localStorage.removeItem(ACCESS_STORAGE_KEY);
+  window.location.hash = "";
+  renderRoute();
+}
+
+function loadAccessSession() {
+  try {
+    const session = JSON.parse(localStorage.getItem(ACCESS_STORAGE_KEY));
+    return ACCESS_CONFIG[session?.role] ? session : null;
+  } catch {
+    return null;
+  }
+}
+
+function canAccessCalculator(type) {
+  return ACCESS_CONFIG[accessSession?.role]?.allowedCalculators.includes(type);
+}
+
+function firstAllowedCalculator() {
+  return ACCESS_CONFIG[accessSession?.role]?.allowedCalculators[0] ?? "service";
+}
+
+function renderAllowedChoices() {
+  document.querySelectorAll("[data-calculator-choice]").forEach((choice) => {
+    const type = choice.dataset.calculatorChoice;
+    choice.hidden = !canAccessCalculator(type);
+  });
 }
 
 function getRouteType() {
