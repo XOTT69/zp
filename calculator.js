@@ -53,7 +53,12 @@ export function calculateServicePayroll(input) {
   const tenureRate = values.tenureYears >= 1 ? values.tenureYears * 0.05 : 0;
   const tenurePay = ((config.tenureBase * tenureRate) / normHours) * values.actualHours;
   const totalPay = basePay + tenurePay;
-  const tax = totalPay * PAYROLL_CONFIG.taxRate;
+  const baseGross = basePay / (1 - PAYROLL_CONFIG.taxRate);
+  const baseTax = baseGross - basePay;
+  const tenureGross = tenurePay / (1 - PAYROLL_CONFIG.taxRate);
+  const tenureTax = tenureGross - tenurePay;
+  const totalGross = baseGross + tenureGross;
+  const tax = baseTax + tenureTax;
 
   return {
     input: values,
@@ -68,17 +73,17 @@ export function calculateServicePayroll(input) {
     taxiCompensation,
     wowBonus: 0,
     basePay,
-    baseGross: basePay,
-    baseTax: basePay * PAYROLL_CONFIG.taxRate,
+    baseGross,
+    baseTax,
     tenureRate,
     tenurePay,
-    tenureGross: tenurePay,
-    tenureTax: tenurePay * PAYROLL_CONFIG.taxRate,
+    tenureGross,
+    tenureTax,
     totalPay,
     tax,
     baseNet: basePay,
     tenureNet: tenurePay,
-    totalGross: totalPay,
+    totalGross,
     totalTax: tax,
     totalNet: totalPay
   };

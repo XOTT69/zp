@@ -22,6 +22,7 @@ const statusMessage = document.querySelector("#statusMessage");
 const homeView = document.querySelector("#homeView");
 const calculatorView = document.querySelector("#calculatorView");
 const summaryStrip = document.querySelector("#summaryStrip");
+const modeSwitcher = document.querySelector("#modeSwitcher");
 const homeButton = document.querySelector("#homeButton");
 const resetButton = document.querySelector("#resetButton");
 const copyButton = document.querySelector("#copyButton");
@@ -80,6 +81,7 @@ function renderRoute() {
   homeView.hidden = !isHome;
   calculatorView.hidden = isHome;
   summaryStrip.hidden = isHome;
+  modeSwitcher.hidden = isHome;
   resetButton.hidden = isHome;
   copyButton.hidden = isHome;
   printButton.hidden = isHome;
@@ -88,6 +90,7 @@ function renderRoute() {
   roleBadge.hidden = false;
   roleBadge.textContent = ACCESS_CONFIG[accessSession.role].label;
   renderAllowedChoices();
+  renderModeSwitcher();
 
   if (isHome) {
     document.querySelector("#appTitle").textContent = "Калькулятор ЗП";
@@ -117,6 +120,7 @@ function renderAccessGate() {
   homeView.hidden = true;
   calculatorView.hidden = true;
   summaryStrip.hidden = true;
+  modeSwitcher.hidden = true;
   resetButton.hidden = true;
   copyButton.hidden = true;
   printButton.hidden = true;
@@ -147,9 +151,7 @@ function handleAccessSubmit(event) {
   accessError.textContent = "";
   accessForm.reset();
 
-  if (!getRouteType() || !canAccessCalculator(getRouteType())) {
-    window.location.hash = firstAllowedCalculator();
-  }
+  window.location.hash = role === "supervisor" ? "supervisor" : firstAllowedCalculator();
   renderRoute();
 }
 
@@ -184,6 +186,14 @@ function renderAllowedChoices() {
   });
 }
 
+function renderModeSwitcher() {
+  document.querySelectorAll("[data-mode-link]").forEach((link) => {
+    const type = link.dataset.modeLink;
+    link.hidden = !canAccessCalculator(type);
+    link.classList.toggle("is-active", type === calculatorType);
+  });
+}
+
 function getRouteType() {
   const route = window.location.hash.replace("#", "");
   return route === "service" || route === "supervisor" ? route : null;
@@ -206,12 +216,11 @@ function renderModeFields() {
 }
 
 function renderModeLabels() {
-  const isSupervisor = calculatorType === "supervisor";
   setText("#totalMainLabel", "Загальна сума до виплати");
-  setText("#totalGrossLabel", isSupervisor ? "Сума з податком" : "До виплати ЗП + стаж");
-  setText("#totalTaxLabel", isSupervisor ? "Податки 23%" : "Податок 23%");
-  setText("#baseResultLabel", isSupervisor ? "ЗП чистими" : "До виплати ЗП");
-  setText("#tenureResultLabel", isSupervisor ? "Стаж чистими" : "Премія стаж");
+  setText("#totalGrossLabel", "Сума з податком");
+  setText("#totalTaxLabel", calculatorType === "supervisor" ? "Податки 23%" : "Податок 23%");
+  setText("#baseResultLabel", calculatorType === "supervisor" ? "ЗП чистими" : "До виплати ЗП");
+  setText("#tenureResultLabel", calculatorType === "supervisor" ? "Стаж чистими" : "Премія стаж");
 }
 
 function renderRatingButtons(activeZone) {
@@ -266,13 +275,14 @@ function update() {
 
 function readInputs() {
   const data = new FormData(form);
+  const defaults = getDefaultInputs(calculatorType);
   return {
     month: data.get("month"),
     actualHours: data.get("actualHours"),
     testsHigh: form.elements.testsHigh.checked,
     ratingZone: selectedRatingZone,
     level: data.get("level"),
-    salary: data.get("salary"),
+    salary: defaults.salary,
     nightHours: data.get("nightHours"),
     holidayHours: data.get("holidayHours"),
     doubleHours: data.get("doubleHours"),
@@ -429,6 +439,7 @@ function renderReport(result) {
     ["ЗП", formatCurrency(result.basePay)],
     ["Стаж", formatCurrency(result.tenurePay)],
     ["Податки", formatCurrency(result.tax)],
+    ["Сума з податком", formatCurrency(result.totalGross)],
     ["Загальна сума до виплати", formatCurrency(result.totalPay)]
   ];
 
@@ -461,7 +472,8 @@ function serviceRows(result) {
     ["Монобрат / таксі", result.taxiCompensation],
     [`Премія стаж ${Math.round(result.tenureRate * 100)}%`, result.tenurePay],
     ["Загальна сума до виплати", result.totalPay],
-    ["Податок 23%", result.tax]
+    ["Податок 23%", result.tax],
+    ["Сума з податком", result.totalGross]
   ];
 }
 
@@ -474,7 +486,8 @@ function supervisorRows(result) {
     [`Стаж з податком ${Math.round(result.tenureRate * 100)}%`, result.tenureGross],
     ["Податок стаж 23%", result.tenureTax],
     ["Стаж чистими", result.tenurePay],
-    ["Загальна сума до виплати", result.totalPay]
+    ["Загальна сума до виплати", result.totalPay],
+    ["Сума з податком", result.totalGross]
   ];
 }
 
@@ -561,6 +574,7 @@ function buildTextReport(result, config) {
     `ЗП: ${formatCurrency(result.basePay)}`,
     `Стаж: ${formatCurrency(result.tenurePay)}`,
     `Податки: ${formatCurrency(result.tax)}`,
+    `Сума з податком: ${formatCurrency(result.totalGross)}`,
     `Години: ${roundMoney(result.effectiveHours)} / норма ${result.normHours}`,
     `Рейтинг: зона ${result.input.ratingZone}, ${formatCurrency(result.ratingBonus)}`,
     `Рівень: ${levelLabel(result.input.level)}, ${formatCurrency(result.levelBonus)}`
@@ -588,7 +602,8 @@ function showStatus(message) {
 
 function loadInputs(type) {
   try {
-    return { ...getDefaultInputs(type), ...JSON.parse(localStorage.getItem(storageKey(type))) };
+    const defaults = getDefaultInputs(type);
+    return { ...defaults, ...JSON.parse(localStorage.getItem(storageKey(type))), salary: defaults.salary };
   } catch {
     return getDefaultInputs(type);
   }

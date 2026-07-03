@@ -8,7 +8,7 @@
       name="description"
       content="Калькулятор зарплати для графіка 2/2 за ставками з 01.03.2026"
     />
-    <link rel="stylesheet" href="./styles.css?v=4" />
+    <link rel="stylesheet" href="./styles.css?v=7" />
   </head>
   <body>
     <div class="shell">
@@ -19,13 +19,24 @@
         </div>
         <div class="top-actions">
           <span class="role-pill" id="roleBadge" hidden></span>
-          <button class="ghost-button" id="homeButton" type="button">Вибір</button>
+          <button class="ghost-button" id="homeButton" type="button">Всі розрахунки</button>
           <button class="ghost-button" id="resetButton" type="button">Скинути</button>
           <button class="primary-button" id="copyButton" type="button">Копія</button>
           <button class="primary-button" id="printButton" type="button">PDF</button>
           <button class="ghost-button" id="logoutButton" type="button">Вийти</button>
         </div>
       </header>
+
+      <nav class="mode-switcher" id="modeSwitcher" aria-label="Перемикання розрахунків" hidden>
+        <a href="#service" data-calculator-choice="service" data-mode-link="service">
+          <span>Оператори</span>
+          <strong>ЗП сервісу</strong>
+        </a>
+        <a href="#supervisor" data-calculator-choice="supervisor" data-mode-link="supervisor">
+          <span>СВ</span>
+          <strong>ЗП СВ</strong>
+        </a>
+      </nav>
 
       <section class="access-view" id="accessView" aria-labelledby="accessTitle">
         <div class="access-card">
@@ -56,7 +67,7 @@
           <h2 id="homeTitle">Яку зарплату рахуємо?</h2>
         </div>
         <div class="choice-grid">
-          <a class="choice-card" href="#service">
+          <a class="choice-card" href="#service" data-calculator-choice="service">
             <span>Оператор сервісу</span>
             <strong>ЗП сервісу 2/2</strong>
             <small>Рейтинг, рівень, нічні, X2, стаж</small>
@@ -75,7 +86,7 @@
           <strong id="totalNet">0 грн</strong>
         </div>
         <div>
-          <span id="totalGrossLabel">До виплати ЗП + стаж</span>
+          <span id="totalGrossLabel">Сума з податком</span>
           <strong id="totalGross">0 грн</strong>
         </div>
         <div>
@@ -246,6 +257,6 @@
       </main>
     </div>
 
-    <script type="module" src="./app.js?v=4"></script>
+    <script type="module" src="./app.js?v=7"></script>
   </body>
 </html>
