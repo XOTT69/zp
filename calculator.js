@@ -71,7 +71,8 @@ export function calculateServicePayroll(input) {
     fines: values.fines,
     tenurePay,
     wowBonus: 0,
-    isGrossMode: false
+    isGrossMode: false,
+    paymentHourlyRates: config.paymentHourlyRates
   });
   const absencePayments = calculateAbsencePayments(values);
 
@@ -149,7 +150,8 @@ export function calculateSupervisorPayroll(input) {
     fines: values.fines,
     tenurePay,
     wowBonus,
-    isGrossMode: true
+    isGrossMode: true,
+    paymentHourlyRates: config.paymentHourlyRates
   });
   const absencePayments = calculateAbsencePayments(values);
 
@@ -234,11 +236,22 @@ export function getDefaultInputs(calculatorType = "service") {
 
 function normalizeInputs(input, calculatorType) {
   const defaults = getDefaultInputs(calculatorType);
+  const config = PAYROLL_CONFIG.calculators[calculatorType];
+  const ratingZone = Math.min(PAYROLL_CONFIG.maxRatingZone, Math.max(1, Math.round(toNumber(input.ratingZone) || 1)));
+  const ratingBonus = config.ratingBonusByZone[ratingZone] ?? 0;
+  const ratingTaxMultiplier = calculatorType === "supervisor" ? 1 - PAYROLL_CONFIG.taxRate : 1;
+  const ratingFirstPart = Math.max(
+    0,
+    config.ratingFirstPartRate
+      ? ratingBonus * config.ratingFirstPartRate * ratingTaxMultiplier
+      : toNumber(defaults.ratingFirstPart)
+  );
+
   return {
     month: input.month || defaults.month,
     actualHours: toNumber(input.actualHours),
     testsHigh: Boolean(input.testsHigh),
-    ratingZone: Math.min(PAYROLL_CONFIG.maxRatingZone, Math.max(1, Math.round(toNumber(input.ratingZone) || 1))),
+    ratingZone,
     level: input.level || defaults.level,
     salary: toNumber(input.salary),
     nightHours: toNumber(input.nightHours),
@@ -249,7 +262,8 @@ function normalizeInputs(input, calculatorType) {
     taxiAmount: toNumber(input.taxiAmount),
     tenureYears: Math.max(0, Math.floor(toNumber(input.tenureYears))),
     firstHalfHours: Math.max(0, toNumber(valueOrDefault(input.firstHalfHours, defaults.firstHalfHours))),
-    ratingFirstPart: Math.max(0, toNumber(valueOrDefault(input.ratingFirstPart, defaults.ratingFirstPart))),
+    secondHalfHours: Math.max(0, toNumber(valueOrDefault(input.secondHalfHours, defaults.secondHalfHours))),
+    ratingFirstPart,
     averageDailyPay: Math.max(0, toNumber(input.averageDailyPay)),
     vacationDays: Math.max(0, toNumber(input.vacationDays)),
     sickDays: Math.max(0, toNumber(input.sickDays)),
@@ -261,22 +275,24 @@ function normalizeInputs(input, calculatorType) {
 function calculatePaymentSchedule(values, parts) {
   const taxMultiplier = parts.isGrossMode ? 1 - PAYROLL_CONFIG.taxRate : 1;
   const firstHalfHours = Math.min(values.firstHalfHours, parts.effectiveHours);
-  const fullHalfHours = parts.normHours / 2;
+  const secondHalfHours = Math.min(values.secondHalfHours, Math.max(0, parts.effectiveHours - firstHalfHours));
   const fixedWorked = (values.salary / parts.normHours) * parts.effectiveHours * taxMultiplier;
-  const fixedAdvance = Math.min(
-    fixedWorked,
-    (values.salary / parts.normHours) * firstHalfHours * taxMultiplier
-  );
-  const fixedMonthEndTarget = (values.salary / parts.normHours) * fullHalfHours * taxMultiplier;
+  const fixedAdvanceTarget = parts.paymentHourlyRates?.firstHalfFixedNet
+    ? parts.paymentHourlyRates.firstHalfFixedNet * firstHalfHours
+    : (values.salary / parts.normHours) * firstHalfHours * taxMultiplier;
+  const fixedAdvance = Math.min(fixedWorked, fixedAdvanceTarget);
+  const fixedMonthEndTarget = parts.paymentHourlyRates?.secondHalfFixedNet
+    ? parts.paymentHourlyRates.secondHalfFixedNet * secondHalfHours
+    : (values.salary / parts.normHours) * secondHalfHours * taxMultiplier;
   const fixedMonthEnd = Math.min(Math.max(0, fixedWorked - fixedAdvance), fixedMonthEndTarget);
   const fixedSettlement = Math.max(0, fixedWorked - fixedAdvance - fixedMonthEnd);
   const ratingWorked = (parts.ratingBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
   const ratingFirstPart = Math.min(values.ratingFirstPart, ratingWorked);
   const ratingSecondPart = Math.max(0, ratingWorked - ratingFirstPart);
   const levelPay = (parts.levelBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
-  const extras = parts.nightPay + parts.holidayPay + parts.doublePay + parts.taxiCompensation - parts.fines + parts.wowBonus;
+  const extras = parts.nightPay + parts.holidayPay + parts.doublePay + parts.taxiCompensation - parts.fines;
   const nextMonthRatingPay = ratingSecondPart + levelPay + extras + fixedSettlement;
-  const midMonthPay = fixedAdvance + ratingFirstPart;
+  const midMonthPay = fixedAdvance + ratingFirstPart + parts.wowBonus;
   const monthEndPay = fixedMonthEnd;
 
   return {
@@ -291,7 +307,8 @@ function calculatePaymentSchedule(values, parts) {
     ratingFirstPart,
     ratingSecondPart,
     levelPay,
-    extras
+    extras,
+    wowBonus: parts.wowBonus
   };
 }
 

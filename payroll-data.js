@@ -37,6 +37,7 @@ export const PAYROLL_CONFIG = {
         5: 11935
       },
       tenureBase: 29991,
+      ratingFirstPartRate: 3100 / 23062,
       defaultInputs: {
         month: "Липень",
         actualHours: 187,
@@ -52,6 +53,7 @@ export const PAYROLL_CONFIG = {
         taxiAmount: 0,
         tenureYears: 5,
         firstHalfHours: 82.5,
+        secondHalfHours: 82.5,
         ratingFirstPart: 3100,
         averageDailyPay: 0,
         vacationDays: 0,
@@ -77,6 +79,7 @@ export const PAYROLL_CONFIG = {
       },
       tenureBase: 63190,
       wowCaseRate: 400,
+      ratingFirstPartRate: 0,
       defaultInputs: {
         month: "Травень",
         actualHours: 200,
@@ -91,7 +94,8 @@ export const PAYROLL_CONFIG = {
         fines: 0,
         taxiAmount: 0,
         tenureYears: 8,
-        firstHalfHours: 82.5,
+        firstHalfHours: 99,
+        secondHalfHours: 93.3,
         ratingFirstPart: 0,
         averageDailyPay: 0,
         vacationDays: 0,
@@ -102,6 +106,10 @@ export const PAYROLL_CONFIG = {
       levelBonusRules: {
         level2: { maxZoneExclusive: 4, amount: 3620 },
         level3: { underZone3: 7240, zone3: 3620 }
+      },
+      paymentHourlyRates: {
+        firstHalfFixedNet: 18170.04 / 99,
+        secondHalfFixedNet: 16296 / 93.3
       }
     }
   }

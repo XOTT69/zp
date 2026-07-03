@@ -295,7 +295,8 @@ function readInputs() {
     taxiAmount: data.get("taxiAmount"),
     tenureYears: data.get("tenureYears"),
     firstHalfHours: data.get("firstHalfHours"),
-    ratingFirstPart: data.get("ratingFirstPart"),
+    secondHalfHours: data.get("secondHalfHours"),
+    ratingFirstPart: defaults.ratingFirstPart,
     averageDailyPay: data.get("averageDailyPay"),
     vacationDays: data.get("vacationDays"),
     sickDays: data.get("sickDays"),
@@ -440,9 +441,12 @@ function formulaRows(result) {
 function renderPaymentSchedule(result) {
   const schedule = result.paymentSchedule;
   const absence = result.absencePayments;
+  if (form.elements.ratingFirstPart) {
+    form.elements.ratingFirstPart.value = roundMoney(result.input.ratingFirstPart);
+  }
   const rows = [
-    ["15 число", schedule.midMonthPay, "50% окладу за години до 15-го + 1 частина рейтингу"],
-    ["31 число", schedule.monthEndPay, "2 частина окладу цього місяця"],
+    ["15 число", schedule.midMonthPay, "оклад за години до 15-го + 1 частина рейтингу + WOW для СВ"],
+    ["31 число", schedule.monthEndPay, "оклад за години 16-30/31"],
     ["07 число", schedule.nextMonthRatingPay, "2 частина рейтингу, доплати, рівень та коригування"],
     ["9/10 число", schedule.tenurePay, "Надбавка за стаж, якщо є"]
   ];
@@ -668,7 +672,19 @@ function showStatus(message) {
 function loadInputs(type) {
   try {
     const defaults = getDefaultInputs(type);
-    return { ...defaults, ...JSON.parse(localStorage.getItem(storageKey(type))), salary: defaults.salary };
+    const saved = JSON.parse(localStorage.getItem(storageKey(type))) ?? {};
+    if (type === "supervisor" && saved.firstHalfHours === 82.5 && saved.secondHalfHours === undefined) {
+      saved.firstHalfHours = defaults.firstHalfHours;
+    }
+    if (saved.secondHalfHours === undefined) {
+      saved.secondHalfHours = defaults.secondHalfHours;
+    }
+    return {
+      ...defaults,
+      ...saved,
+      salary: defaults.salary,
+      ratingFirstPart: defaults.ratingFirstPart
+    };
   } catch {
     return getDefaultInputs(type);
   }
