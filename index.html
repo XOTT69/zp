@@ -8,7 +8,7 @@
       name="description"
       content="Калькулятор зарплати для графіка 2/2 за ставками з 01.03.2026"
     />
-    <link rel="stylesheet" href="./styles.css?v=7" />
+    <link rel="stylesheet" href="./styles.css?v=9" />
   </head>
   <body>
     <div class="shell">
@@ -19,7 +19,7 @@
         </div>
         <div class="top-actions">
           <span class="role-pill" id="roleBadge" hidden></span>
-          <button class="ghost-button" id="homeButton" type="button">Всі розрахунки</button>
+          <button class="ghost-button" id="homeButton" type="button">Розрахунки</button>
           <button class="ghost-button" id="resetButton" type="button">Скинути</button>
           <button class="primary-button" id="copyButton" type="button">Копія</button>
           <button class="primary-button" id="printButton" type="button">PDF</button>
@@ -191,6 +191,51 @@
                 </label>
               </div>
             </details>
+
+            <details class="input-drawer">
+              <summary>Прогноз виплат, відпустка і лікарняні</summary>
+              <div class="form-grid drawer-grid">
+                <label class="field">
+                  <span>Годин до 15-го</span>
+                  <input name="firstHalfHours" type="number" min="0" step="0.5" inputmode="decimal" />
+                </label>
+
+                <label class="field">
+                  <span>1 частина рейтингу 15-го</span>
+                  <input name="ratingFirstPart" type="number" min="0" step="1" inputmode="decimal" />
+                </label>
+
+                <label class="field">
+                  <span>Середня ЗП за 1 день</span>
+                  <input name="averageDailyPay" type="number" min="0" step="1" inputmode="decimal" />
+                </label>
+
+                <label class="field">
+                  <span>Днів відпустки</span>
+                  <input name="vacationDays" type="number" min="0" step="1" inputmode="numeric" />
+                </label>
+
+                <label class="field">
+                  <span>Днів лікарняного</span>
+                  <input name="sickDays" type="number" min="0" step="1" inputmode="numeric" />
+                </label>
+
+                <label class="field">
+                  <span>% страхового стажу</span>
+                  <select name="sickInsuranceRate">
+                    <option value="0.5">до 3 років - 50%</option>
+                    <option value="0.6">3-5 років - 60%</option>
+                    <option value="0.7">5-8 років - 70%</option>
+                    <option value="1">понад 8 років - 100%</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Днів декретної відпустки</span>
+                  <input name="maternityDays" type="number" min="0" step="1" inputmode="numeric" />
+                </label>
+              </div>
+            </details>
           </form>
 
           <div class="notice-list" id="validationMessages" aria-live="polite"></div>
@@ -231,6 +276,17 @@
             </div>
 
             <div class="breakdown" id="breakdown"></div>
+            <section class="payment-panel" aria-labelledby="paymentTitle">
+              <div class="section-heading compact-heading">
+                <p class="eyebrow">Прогноз</p>
+                <h2 id="paymentTitle">Виплати по датах</h2>
+              </div>
+              <div class="payment-grid" id="paymentGrid"></div>
+              <details class="formula-panel">
+                <summary>Відпустка, лікарняні, декретні</summary>
+                <div class="absence-grid" id="absenceGrid"></div>
+              </details>
+            </section>
             <details class="formula-panel">
               <summary>Як пораховано</summary>
               <div id="formulaList"></div>
@@ -256,7 +312,8 @@
         </section>
       </main>
     </div>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <script type="module" src="./app.js?v=7"></script>
+    <script type="module" src="./app.js?v=9"></script>
   </body>
 </html>

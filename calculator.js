@@ -59,6 +59,21 @@ export function calculateServicePayroll(input) {
   const tenureTax = tenureGross - tenurePay;
   const totalGross = baseGross + tenureGross;
   const tax = baseTax + tenureTax;
+  const paymentSchedule = calculatePaymentSchedule(values, {
+    normHours,
+    effectiveHours,
+    ratingBonus,
+    levelBonus,
+    nightPay,
+    holidayPay,
+    doublePay,
+    taxiCompensation,
+    fines: values.fines,
+    tenurePay,
+    wowBonus: 0,
+    isGrossMode: false
+  });
+  const absencePayments = calculateAbsencePayments(values);
 
   return {
     input: values,
@@ -85,7 +100,9 @@ export function calculateServicePayroll(input) {
     tenureNet: tenurePay,
     totalGross,
     totalTax: tax,
-    totalNet: totalPay
+    totalNet: totalPay,
+    paymentSchedule,
+    absencePayments
   };
 }
 
@@ -120,6 +137,21 @@ export function calculateSupervisorPayroll(input) {
   const tenurePay = tenureGross - tenureTax;
   const totalPay = basePay + tenurePay;
   const tax = baseTax + tenureTax;
+  const paymentSchedule = calculatePaymentSchedule(values, {
+    normHours,
+    effectiveHours,
+    ratingBonus,
+    levelBonus,
+    nightPay,
+    holidayPay,
+    doublePay,
+    taxiCompensation,
+    fines: values.fines,
+    tenurePay,
+    wowBonus,
+    isGrossMode: true
+  });
+  const absencePayments = calculateAbsencePayments(values);
 
   return {
     calculatorType: "supervisor",
@@ -147,7 +179,9 @@ export function calculateSupervisorPayroll(input) {
     totalTax: tax,
     totalPay,
     totalNet: totalPay,
-    tax
+    tax,
+    paymentSchedule,
+    absencePayments
   };
 }
 
@@ -213,11 +247,72 @@ function normalizeInputs(input, calculatorType) {
     wowCases: Math.min(PAYROLL_CONFIG.maxWowCases, Math.max(0, Math.round(toNumber(input.wowCases)))),
     fines: toNumber(input.fines),
     taxiAmount: toNumber(input.taxiAmount),
-    tenureYears: Math.max(0, Math.floor(toNumber(input.tenureYears)))
+    tenureYears: Math.max(0, Math.floor(toNumber(input.tenureYears))),
+    firstHalfHours: Math.max(0, toNumber(valueOrDefault(input.firstHalfHours, defaults.firstHalfHours))),
+    ratingFirstPart: Math.max(0, toNumber(valueOrDefault(input.ratingFirstPart, defaults.ratingFirstPart))),
+    averageDailyPay: Math.max(0, toNumber(input.averageDailyPay)),
+    vacationDays: Math.max(0, toNumber(input.vacationDays)),
+    sickDays: Math.max(0, toNumber(input.sickDays)),
+    sickInsuranceRate: Math.min(1, Math.max(0, toNumber(valueOrDefault(input.sickInsuranceRate, defaults.sickInsuranceRate)))),
+    maternityDays: Math.max(0, toNumber(input.maternityDays))
+  };
+}
+
+function calculatePaymentSchedule(values, parts) {
+  const taxMultiplier = parts.isGrossMode ? 1 - PAYROLL_CONFIG.taxRate : 1;
+  const firstHalfHours = Math.min(values.firstHalfHours, parts.effectiveHours);
+  const fullHalfHours = parts.normHours / 2;
+  const fixedWorked = (values.salary / parts.normHours) * parts.effectiveHours * taxMultiplier;
+  const fixedAdvance = Math.min(
+    fixedWorked,
+    (values.salary / parts.normHours) * firstHalfHours * taxMultiplier
+  );
+  const fixedMonthEndTarget = (values.salary / parts.normHours) * fullHalfHours * taxMultiplier;
+  const fixedMonthEnd = Math.min(Math.max(0, fixedWorked - fixedAdvance), fixedMonthEndTarget);
+  const fixedSettlement = Math.max(0, fixedWorked - fixedAdvance - fixedMonthEnd);
+  const ratingWorked = (parts.ratingBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
+  const ratingFirstPart = Math.min(values.ratingFirstPart, ratingWorked);
+  const ratingSecondPart = Math.max(0, ratingWorked - ratingFirstPart);
+  const levelPay = (parts.levelBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
+  const extras = parts.nightPay + parts.holidayPay + parts.doublePay + parts.taxiCompensation - parts.fines + parts.wowBonus;
+  const nextMonthRatingPay = ratingSecondPart + levelPay + extras + fixedSettlement;
+  const midMonthPay = fixedAdvance + ratingFirstPart;
+  const monthEndPay = fixedMonthEnd;
+
+  return {
+    midMonthPay,
+    monthEndPay,
+    nextMonthRatingPay,
+    tenurePay: parts.tenurePay,
+    estimatedTotal: midMonthPay + monthEndPay + nextMonthRatingPay + parts.tenurePay,
+    fixedAdvance,
+    fixedMonthEnd,
+    fixedSettlement,
+    ratingFirstPart,
+    ratingSecondPart,
+    levelPay,
+    extras
+  };
+}
+
+function calculateAbsencePayments(values) {
+  const sickPay = values.averageDailyPay * values.sickInsuranceRate * values.sickDays;
+  const vacationPay = values.averageDailyPay * values.vacationDays;
+  const maternityPay = values.averageDailyPay * values.maternityDays;
+
+  return {
+    sickPay,
+    vacationPay,
+    maternityPay,
+    total: sickPay + vacationPay + maternityPay
   };
 }
 
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function valueOrDefault(value, fallback) {
+  return value === undefined || value === null || value === "" ? fallback : value;
 }

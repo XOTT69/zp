@@ -50,7 +50,14 @@ export const PAYROLL_CONFIG = {
         wowCases: 0,
         fines: 0,
         taxiAmount: 0,
-        tenureYears: 5
+        tenureYears: 5,
+        firstHalfHours: 82.5,
+        ratingFirstPart: 3100,
+        averageDailyPay: 0,
+        vacationDays: 0,
+        sickDays: 0,
+        sickInsuranceRate: 0.7,
+        maternityDays: 0
       },
       levelBonusRules: {
         level2: { maxZoneExclusive: 4, amount: 2787 },
@@ -83,7 +90,14 @@ export const PAYROLL_CONFIG = {
         wowCases: 0,
         fines: 0,
         taxiAmount: 0,
-        tenureYears: 8
+        tenureYears: 8,
+        firstHalfHours: 82.5,
+        ratingFirstPart: 0,
+        averageDailyPay: 0,
+        vacationDays: 0,
+        sickDays: 0,
+        sickInsuranceRate: 1,
+        maternityDays: 0
       },
       levelBonusRules: {
         level2: { maxZoneExclusive: 4, amount: 3620 },

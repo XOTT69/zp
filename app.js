@@ -35,6 +35,9 @@ const scenarioList = document.querySelector("#scenarioList");
 const validationMessages = document.querySelector("#validationMessages");
 const formulaList = document.querySelector("#formulaList");
 const reportPanel = document.querySelector("#reportPanel");
+const paymentGrid = document.querySelector("#paymentGrid");
+const absenceGrid = document.querySelector("#absenceGrid");
+const toast = document.querySelector("#toast");
 
 let calculatorType = getRouteType();
 let selectedRatingZone = getDefaultInputs(calculatorType || "service").ratingZone;
@@ -269,6 +272,7 @@ function update() {
   renderResult(result);
   renderValidation(result);
   renderFormulaList(result);
+  renderPaymentSchedule(result);
   renderReport(result);
   renderScenarios();
 }
@@ -289,7 +293,14 @@ function readInputs() {
     wowCases: data.get("wowCases"),
     fines: data.get("fines"),
     taxiAmount: data.get("taxiAmount"),
-    tenureYears: data.get("tenureYears")
+    tenureYears: data.get("tenureYears"),
+    firstHalfHours: data.get("firstHalfHours"),
+    ratingFirstPart: data.get("ratingFirstPart"),
+    averageDailyPay: data.get("averageDailyPay"),
+    vacationDays: data.get("vacationDays"),
+    sickDays: data.get("sickDays"),
+    sickInsuranceRate: data.get("sickInsuranceRate"),
+    maternityDays: data.get("maternityDays")
   };
 }
 
@@ -426,6 +437,45 @@ function formulaRows(result) {
   return rows;
 }
 
+function renderPaymentSchedule(result) {
+  const schedule = result.paymentSchedule;
+  const absence = result.absencePayments;
+  const rows = [
+    ["15 число", schedule.midMonthPay, "50% окладу за години до 15-го + 1 частина рейтингу"],
+    ["31 число", schedule.monthEndPay, "2 частина окладу цього місяця"],
+    ["07 число", schedule.nextMonthRatingPay, "2 частина рейтингу, доплати, рівень та коригування"],
+    ["9/10 число", schedule.tenurePay, "Надбавка за стаж, якщо є"]
+  ];
+
+  paymentGrid.innerHTML = rows
+    .map(
+      ([label, value, hint]) => `
+        <article class="payment-card">
+          <span>${label}</span>
+          <strong>${formatCurrency(value)}</strong>
+          <small>${hint}</small>
+        </article>
+      `
+    )
+    .join("");
+
+  absenceGrid.innerHTML = [
+    ["Відпустка", absence.vacationPay, "середня ЗП за день * дні"],
+    ["Лікарняні", absence.sickPay, "середня ЗП за день * % стажу * дні"],
+    ["Декретні", absence.maternityPay, "середня ЗП за день * календарні дні"],
+    ["Разом", absence.total, "орієнтовна сума окремих виплат"]
+  ]
+    .map(
+      ([label, value, hint]) => `
+        <div class="absence-row">
+          <span>${label}<small>${hint}</small></span>
+          <strong>${formatCurrency(value)}</strong>
+        </div>
+      `
+    )
+    .join("");
+}
+
 function renderReport(result) {
   const config = CALCULATORS[calculatorType];
   const rows = [
@@ -440,7 +490,12 @@ function renderReport(result) {
     ["Стаж", formatCurrency(result.tenurePay)],
     ["Податки", formatCurrency(result.tax)],
     ["Сума з податком", formatCurrency(result.totalGross)],
-    ["Загальна сума до виплати", formatCurrency(result.totalPay)]
+    ["Загальна сума до виплати", formatCurrency(result.totalPay)],
+    ["15 число", formatCurrency(result.paymentSchedule.midMonthPay)],
+    ["31 число", formatCurrency(result.paymentSchedule.monthEndPay)],
+    ["07 число", formatCurrency(result.paymentSchedule.nextMonthRatingPay)],
+    ["9/10 число стаж", formatCurrency(result.paymentSchedule.tenurePay)],
+    ["Відпустка/лікарняні/декретні", formatCurrency(result.absencePayments.total)]
   ];
 
   reportPanel.innerHTML = `
@@ -499,7 +554,7 @@ async function copySummary() {
 
   try {
     await navigator.clipboard.writeText(summary);
-    showStatus("Скопійовано");
+    showStatus("Скопійовано в буфер обміну");
   } catch {
     showStatus("Не вдалося скопіювати");
   }
@@ -575,6 +630,11 @@ function buildTextReport(result, config) {
     `Стаж: ${formatCurrency(result.tenurePay)}`,
     `Податки: ${formatCurrency(result.tax)}`,
     `Сума з податком: ${formatCurrency(result.totalGross)}`,
+    `15 число: ${formatCurrency(result.paymentSchedule.midMonthPay)}`,
+    `31 число: ${formatCurrency(result.paymentSchedule.monthEndPay)}`,
+    `07 число: ${formatCurrency(result.paymentSchedule.nextMonthRatingPay)}`,
+    `9/10 число стаж: ${formatCurrency(result.paymentSchedule.tenurePay)}`,
+    `Відпустка/лікарняні/декретні: ${formatCurrency(result.absencePayments.total)}`,
     `Години: ${roundMoney(result.effectiveHours)} / норма ${result.normHours}`,
     `Рейтинг: зона ${result.input.ratingZone}, ${formatCurrency(result.ratingBonus)}`,
     `Рівень: ${levelLabel(result.input.level)}, ${formatCurrency(result.levelBonus)}`
@@ -594,9 +654,14 @@ function reset() {
 
 function showStatus(message) {
   statusMessage.textContent = message;
+  toast.textContent = message;
+  toast.hidden = false;
+  toast.classList.add("is-visible");
   window.clearTimeout(showStatus.timeoutId);
   showStatus.timeoutId = window.setTimeout(() => {
     statusMessage.textContent = "";
+    toast.classList.remove("is-visible");
+    toast.hidden = true;
   }, 2200);
 }
 
