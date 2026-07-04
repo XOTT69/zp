@@ -292,18 +292,33 @@ function renderModeLabels() {
 }
 
 function renderRatingButtons(activeZone) {
+  const config = CALCULATORS[calculatorType];
+  const maxZone = getMaxRatingZone(config);
+  const clampedZone = Math.min(activeZone, maxZone);
+  if (clampedZone !== activeZone) {
+    selectedRatingZone = clampedZone;
+  }
   ratingZoneGroup.innerHTML = [1, 2, 3, 4, 5]
+    .filter((zone) => zone <= maxZone)
     .map(
       (zone) => `
         <button
-          class="segment ${zone === activeZone ? "is-active" : ""}"
+          class="segment ${zone === clampedZone ? "is-active" : ""}"
           data-zone="${zone}"
           type="button"
-          aria-pressed="${zone === activeZone}"
+          aria-pressed="${zone === clampedZone}"
         >${zone}</button>
       `
     )
     .join("");
+}
+
+function getMaxRatingZone(config) {
+  if (!config) return 5;
+  const zones = Object.entries(config.ratingBonusByZone ?? {});
+  // Знаходимо найбільшу зону з ненульовою ставкою
+  const activeZones = zones.filter(([, v]) => v > 0).map(([k]) => Number(k));
+  return activeZones.length > 0 ? Math.max(...activeZones) : 5;
 }
 
 function handleRatingClick(event) {
@@ -712,7 +727,8 @@ function printReport() {
 function addScenario() {
   if (!calculatorType || !currentResult) return;
   const scenarios = loadScenarios(calculatorType);
-  if (scenarios.length >= MAX_SCENARIOS) {
+  const willReplace = scenarios.length >= MAX_SCENARIOS;
+  if (willReplace) {
     const shouldReplace = window.confirm(`Можна зберегти максимум ${MAX_SCENARIOS} сценаріїв. Видалити найстаріший і додати новий?`);
     if (!shouldReplace) return;
   }
@@ -730,7 +746,7 @@ function addScenario() {
   scenarios.push(next);
   saveScenarios(calculatorType, scenarios.slice(-MAX_SCENARIOS));
   renderScenarios();
-  showStatus(scenarios.length > MAX_SCENARIOS ? "Найстаріший сценарій замінено" : "Сценарій додано");
+  showStatus(willReplace ? "Найстаріший сценарій замінено" : "Сценарій додано");
 }
 
 function clearScenarios() {

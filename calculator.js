@@ -123,7 +123,7 @@ export function calculateServicePayroll(input, calculatorType = "service") {
     taxiCompensation;
 
   const tenureRate = values.tenureYears >= 1 ? values.tenureYears * 0.05 : 0;
-  const tenureHours = config.tenureHoursMode === "separate" ? values.tenureHours : values.actualHours;
+  const tenureHours = config.tenureHoursMode === "separate" ? values.tenureHours : effectiveHours;
   const tenurePay = ((config.tenureBase * tenureRate) / normHours) * tenureHours;
   const totalPay = basePay + tenurePay;
   const baseGross = basePay / (1 - taxRate);
