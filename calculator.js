@@ -25,7 +25,9 @@ export function configurePayrollData(payload) {
         source: config.source,
         taxMode: config.taxMode,
         taxRate: getTaxRate(config),
-        hasWow: Boolean(config.wowCaseRate)
+        hasWow: Boolean(config.wowCaseRate),
+        bonusInputMode: config.bonusInputMode ?? null,
+        bonusLabel: config.bonusLabel ?? "WOW-кейси"
       }
     ])
   );
@@ -63,7 +65,7 @@ export function calculateServicePayroll(input, calculatorType = "service") {
   const values = normalizeInputs(input, calculatorType);
   const config = PAYROLL_CONFIG.calculators[calculatorType];
   const taxRate = getTaxRate(config);
-  const normHours = getMonthHours(values.month);
+  const normHours = getMonthHours(values.month, calculatorType);
   const ratingBonus = config.ratingBonusByZone[values.ratingZone] ?? 0;
   const levelBonus = getLevelBonus(values.level, values.ratingZone, calculatorType);
   const testHours = values.testsHigh ? 1 : 0;
@@ -71,7 +73,7 @@ export function calculateServicePayroll(input, calculatorType = "service") {
 
   const nightPay = (values.salary / normHours) * values.nightHours * 0.2;
   const holidayPay = (values.salary / normHours) * values.holidayHours;
-  const doublePay = ((values.salary + ratingBonus) / normHours) * values.doubleHours;
+  const doublePay = getDoublePay(values, config, ratingBonus, normHours);
   const taxiCompensation = (values.taxiAmount / PAYROLL_CONFIG.taxiDivisor) * 100;
 
   const basePay =
@@ -103,6 +105,7 @@ export function calculateServicePayroll(input, calculatorType = "service") {
     fines: values.fines,
     tenurePay,
     wowBonus: 0,
+    taxableBonus: 0,
     isGrossMode: false,
     taxRate,
     paymentHourlyRates: config.paymentHourlyRates
@@ -151,7 +154,7 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
   const values = normalizeInputs(input, calculatorType);
   const config = PAYROLL_CONFIG.calculators[calculatorType];
   const taxRate = getTaxRate(config);
-  const normHours = getMonthHours(values.month);
+  const normHours = getMonthHours(values.month, calculatorType);
   const ratingBonus = config.ratingBonusByZone[values.ratingZone] ?? 0;
   const levelBonus = getLevelBonus(values.level, values.ratingZone, calculatorType);
   const testHours = values.testsHigh ? 1 : 0;
@@ -159,8 +162,11 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
 
   const nightPay = (values.salary / normHours) * values.nightHours * 0.2;
   const holidayPay = (values.salary / normHours) * values.holidayHours;
-  const doublePay = ((values.salary + ratingBonus) / normHours) * values.doubleHours;
-  const wowBonus = Math.min(PAYROLL_CONFIG.maxWowCases, Math.max(0, values.wowCases)) * (config.wowCaseRate ?? 0);
+  const doublePay = getDoublePay(values, config, ratingBonus, normHours);
+  const taxableBonus = config.bonusInputMode === "amountTaxable" ? values.wowCases : 0;
+  const wowBonus = config.bonusInputMode === "amountTaxable"
+    ? 0
+    : Math.min(PAYROLL_CONFIG.maxWowCases, Math.max(0, values.wowCases)) * (config.wowCaseRate ?? 0);
   const taxiCompensation = (values.taxiAmount / PAYROLL_CONFIG.taxiDivisor) * 100;
 
   const baseGross =
@@ -168,6 +174,7 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
     nightPay +
     holidayPay +
     doublePay +
+    taxableBonus +
     taxiCompensation -
     values.fines;
   const baseTax = baseGross * taxRate;
@@ -198,8 +205,11 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
     fines: values.fines,
     tenurePay,
     wowBonus,
+    taxableBonus,
     isGrossMode: true,
     taxRate,
+    paymentScheduleMode: config.paymentScheduleMode,
+    advanceBaseNet: config.advanceBaseNet,
     paymentHourlyRates: config.paymentHourlyRates
   });
   const absencePayments = calculateAbsencePayments(values);
@@ -216,6 +226,7 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
     holidayPay,
     doublePay,
     wowBonus,
+    taxableBonus,
     taxiCompensation,
     baseGross,
     baseTax,
@@ -236,8 +247,9 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
   };
 }
 
-export function getMonthHours(month) {
-  return MONTHS.find((item) => item.name === month)?.hours ?? 165;
+export function getMonthHours(month, calculatorType = null) {
+  const config = PAYROLL_CONFIG.calculators[calculatorType];
+  return config?.monthHours?.[month] ?? MONTHS.find((item) => item.name === month)?.hours ?? 165;
 }
 
 export function getServiceLevelBonus(level, ratingZone) {
@@ -249,7 +261,11 @@ export function getSupervisorLevelBonus(level, ratingZone) {
 }
 
 export function getLevelBonus(level, ratingZone, calculatorType = "service") {
-  const rules = PAYROLL_CONFIG.calculators[calculatorType]?.levelBonusRules;
+  const config = PAYROLL_CONFIG.calculators[calculatorType];
+  if (config?.levelBonusByLevel) {
+    return config.levelBonusByLevel[level] ?? 0;
+  }
+  const rules = config?.levelBonusRules;
   if (!rules) return 0;
   return getLevelBonusFromRules(level, ratingZone, rules);
 }
@@ -303,6 +319,7 @@ function normalizeInputs(input, calculatorType) {
       ? ratingBonus * config.ratingFirstPartRate * ratingTaxMultiplier
       : toNumber(defaults.ratingFirstPart)
   );
+  const tenureYears = Math.max(0, Math.floor(toNumber(input.tenureYears)));
 
   return {
     month: input.month || defaults.month,
@@ -314,10 +331,10 @@ function normalizeInputs(input, calculatorType) {
     nightHours: toNumber(input.nightHours),
     holidayHours: toNumber(input.holidayHours),
     doubleHours: toNumber(input.doubleHours),
-    wowCases: Math.min(PAYROLL_CONFIG.maxWowCases, Math.max(0, Math.round(toNumber(input.wowCases)))),
+    wowCases: normalizeBonusInput(input.wowCases, config),
     fines: toNumber(input.fines),
     taxiAmount: toNumber(input.taxiAmount),
-    tenureYears: Math.max(0, Math.floor(toNumber(input.tenureYears))),
+    tenureYears: config.maxTenureYears ? Math.min(config.maxTenureYears, tenureYears) : tenureYears,
     firstHalfHours: Math.max(0, toNumber(valueOrDefault(input.firstHalfHours, defaults.firstHalfHours))),
     secondHalfHours: Math.max(0, toNumber(valueOrDefault(input.secondHalfHours, defaults.secondHalfHours))),
     ratingFirstPart,
@@ -338,6 +355,10 @@ function normalizeInputs(input, calculatorType) {
  * @returns {object} Estimated 15th, month-end, next-month and tenure payouts.
  */
 function calculatePaymentSchedule(values, parts) {
+  if (parts.paymentScheduleMode === "videoVerifier") {
+    return calculateVideoVerifierPaymentSchedule(values, parts);
+  }
+
   const taxMultiplier = parts.isGrossMode ? 1 - parts.taxRate : 1;
   const firstHalfHours = Math.min(values.firstHalfHours, parts.effectiveHours);
   const secondHalfHours = Math.min(values.secondHalfHours, Math.max(0, parts.effectiveHours - firstHalfHours));
@@ -355,7 +376,7 @@ function calculatePaymentSchedule(values, parts) {
   const ratingFirstPart = Math.min(values.ratingFirstPart, ratingWorked);
   const ratingSecondPart = Math.max(0, ratingWorked - ratingFirstPart);
   const levelPay = (parts.levelBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
-  const extras = (parts.nightPay + parts.holidayPay + parts.doublePay + parts.taxiCompensation - parts.fines) * taxMultiplier;
+  const extras = (parts.nightPay + parts.holidayPay + parts.doublePay + parts.taxableBonus + parts.taxiCompensation - parts.fines) * taxMultiplier;
   const nextMonthRatingPay = ratingSecondPart + levelPay + extras + fixedSettlement;
   const midMonthPay = fixedAdvance + ratingFirstPart + parts.wowBonus;
   const monthEndPay = fixedMonthEnd;
@@ -391,6 +412,54 @@ function calculatePaymentSchedule(values, parts) {
   };
 }
 
+function calculateVideoVerifierPaymentSchedule(values, parts) {
+  const taxMultiplier = 1 - parts.taxRate;
+  const firstHalfHours = Math.min(values.firstHalfHours, parts.effectiveHours);
+  const fixedWorked = (values.salary / parts.normHours) * parts.effectiveHours * taxMultiplier;
+  const fixedAdvance = Math.min(fixedWorked, parts.advanceBaseNet ?? fixedWorked / 2);
+  const fixedMonthEnd = Math.max(0, fixedWorked - fixedAdvance);
+  const ratingWorked = (parts.ratingBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
+  const ratingFirstPart = Math.min(
+    ratingWorked,
+    (parts.ratingBonus / parts.normHours) * firstHalfHours * taxMultiplier
+  );
+  const ratingSecondPart = Math.max(0, ratingWorked - ratingFirstPart);
+  const levelPay = (parts.levelBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
+  const extras = (parts.nightPay + parts.holidayPay + parts.doublePay + parts.taxableBonus + parts.taxiCompensation - parts.fines) * taxMultiplier;
+  const nextMonthRatingPay = ratingSecondPart + levelPay + extras;
+  const midMonthPay = fixedAdvance + ratingFirstPart;
+
+  return {
+    midMonthPay,
+    monthEndPay: fixedMonthEnd,
+    nextMonthRatingPay,
+    tenurePay: parts.tenurePay,
+    estimatedTotal: midMonthPay + fixedMonthEnd + nextMonthRatingPay + parts.tenurePay,
+    fixedAdvance,
+    fixedMonthEnd,
+    fixedSettlement: 0,
+    ratingFirstPart,
+    ratingSecondPart,
+    levelPay,
+    extras,
+    wowBonus: 0,
+    midMonthParts: {
+      base: fixedAdvance,
+      rating: ratingFirstPart,
+      wow: 0
+    },
+    monthEndParts: {
+      base: fixedMonthEnd
+    },
+    nextMonthParts: {
+      rating: ratingSecondPart,
+      level: levelPay,
+      extras,
+      settlement: 0
+    }
+  };
+}
+
 function calculateAbsencePayments(values) {
   const averageDailyPay = values.annualIncome / values.absenceCalendarDays;
   const sickPay = averageDailyPay * values.sickInsuranceRate * values.sickDays;
@@ -409,6 +478,21 @@ function calculateAbsencePayments(values) {
 function toNumber(value) {
   const parsed = Number(String(value ?? 0).replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getDoublePay(values, config, ratingBonus, normHours) {
+  if (config.doublePayMode === "baseHourly") {
+    return (values.salary / normHours) * values.doubleHours;
+  }
+  return ((values.salary + ratingBonus) / normHours) * values.doubleHours;
+}
+
+function normalizeBonusInput(value, config) {
+  const numberValue = Math.max(0, toNumber(value));
+  if (config.bonusInputMode === "amountTaxable") {
+    return numberValue;
+  }
+  return Math.min(PAYROLL_CONFIG.maxWowCases, Math.max(0, Math.round(numberValue)));
 }
 
 function valueOrDefault(value, fallback) {

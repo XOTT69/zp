@@ -12,14 +12,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
-    <script>
-      (() => {
-        const savedTheme = localStorage.getItem("zp-theme");
-        if (savedTheme === "dark" || savedTheme === "light") {
-          document.documentElement.dataset.theme = savedTheme;
-        }
-      })();
-    </script>
+    <script src="./theme.js?v=20"></script>
     <link rel="stylesheet" href="./styles.css?v=19" />
   </head>
   <body>
@@ -57,6 +50,10 @@
           <span>ХД</span>
           <strong>ЗП ХД</strong>
         </a>
+        <a href="/video" data-calculator-choice="video" data-mode-link="video">
+          <span>Відео</span>
+          <strong>ЗП відео</strong>
+        </a>
       </nav>
 
       <section class="access-view" id="accessView" aria-labelledby="accessTitle">
@@ -72,6 +69,7 @@
                 <option value="supervisor">СВ</option>
                 <option value="level4">4 лвл</option>
                 <option value="xd">ХД</option>
+                <option value="video">Відеоверифікатор</option>
               </select>
             </label>
             <label>
@@ -109,6 +107,11 @@
             <span>ХД</span>
             <strong>ЗП ХД 2/2</strong>
             <small>19,5% податку, рейтинг, рівень, стаж</small>
+          </a>
+          <a class="choice-card" href="/video" data-calculator-choice="video">
+            <span>Відеоверифікатор</span>
+            <strong>ЗП відео 2/2</strong>
+            <small>Рейтинг, кваліф, нічні, X2, БУРи, аванс 15-го</small>
           </a>
         </div>
       </section>
@@ -203,8 +206,8 @@
                   <input name="doubleHours" type="number" min="0" step="0.5" inputmode="decimal" />
                 </label>
 
-                <label class="field mode-field" data-mode="supervisor">
-                  <span>WOW-кейси</span>
+                <label class="field mode-field" data-feature="bonus">
+                  <span id="bonusInputLabel">WOW-кейси</span>
                   <input name="wowCases" type="number" min="0" max="5" step="1" inputmode="numeric" />
                 </label>
 

@@ -70,6 +70,24 @@ const xdResult = calculatePayroll({
   tenureYears: 4
 }, "xd");
 
+const videoResult = calculatePayroll({
+  month: "Липень",
+  actualHours: 176,
+  testsHigh: false,
+  ratingZone: 5,
+  level: "level3",
+  salary: 30360,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 6,
+  firstHalfHours: 79,
+  secondHalfHours: 86
+}, "video");
+
 const checks = [
   ["service.normHours", serviceResult.normHours, 184],
   ["service.effectiveHours", serviceResult.effectiveHours, 188],
@@ -107,7 +125,18 @@ const checks = [
   ["xd.baseGross", xdResult.baseGross, 37183.681818],
   ["xd.basePay", xdResult.basePay, 29932.863864],
   ["xd.tenurePay", xdResult.tenurePay, 6556],
-  ["xd.totalPay", xdResult.totalPay, 36488.863864]
+  ["xd.totalPay", xdResult.totalPay, 36488.863864],
+  ["video.normHours", videoResult.normHours, 165],
+  ["video.ratingBonus", videoResult.ratingBonus, 14580],
+  ["video.levelBonus", videoResult.levelBonus, 7142.9],
+  ["video.baseGross", videoResult.baseGross, 55555.093333],
+  ["video.basePay", videoResult.basePay, 42777.421867],
+  ["video.tenureGross", videoResult.tenureGross, 15501.2992],
+  ["video.tenurePay", videoResult.tenurePay, 11936.000384],
+  ["video.totalPay", videoResult.totalPay, 54713.422251],
+  ["video.payment15", videoResult.paymentSchedule.midMonthPay, 17025.16],
+  ["video.payment31", videoResult.paymentSchedule.monthEndPay, 13285.68],
+  ["video.payment07", videoResult.paymentSchedule.nextMonthRatingPay, 12466.581867]
 ];
 
 let failed = false;

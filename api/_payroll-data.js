@@ -206,6 +206,71 @@ export const PAYROLL_CONFIG = {
         level2: { maxZoneExclusive: 4, amount: 2787 },
         level3: { underZone3: 5575, zone3: 2787 }
       }
+    },
+    video: {
+      title: "ЗП відеоверифікатор",
+      shortTitle: "Відео",
+      source: "Калькулятор ЗП для графіка 2/2",
+      taxMode: "gross",
+      taxRate: 0.23,
+      doublePayMode: "baseHourly",
+      bonusInputMode: "amountTaxable",
+      bonusLabel: "ВАУ / додаткові бонуси, грн",
+      paymentScheduleMode: "videoVerifier",
+      advanceBaseNet: 11650,
+      monthHours: {
+        "Січень": 165,
+        "Лютий": 154,
+        "Березень": 165,
+        "Квітень": 165,
+        "Травень": 165,
+        "Червень": 165,
+        "Липень": 165,
+        "Серпень": 165,
+        "Вересень": 165,
+        "Жовтень": 165,
+        "Листопад": 165,
+        "Грудень": 165
+      },
+      ratingBonusByZone: {
+        1: 52233 - 30360,
+        2: 50410 - 30360,
+        3: 48587 - 30360,
+        4: 46764 - 30360,
+        5: 44940 - 30360
+      },
+      tenureBase: 48441.56,
+      maxTenureYears: 6,
+      ratingFirstPartRate: 0,
+      defaultInputs: {
+        month: "Липень",
+        actualHours: 176,
+        testsHigh: false,
+        ratingZone: 5,
+        level: "level3",
+        salary: 30360,
+        nightHours: 0,
+        holidayHours: 0,
+        doubleHours: 0,
+        wowCases: 0,
+        fines: 0,
+        taxiAmount: 0,
+        tenureYears: 6,
+        firstHalfHours: 79,
+        secondHalfHours: 86,
+        ratingFirstPart: 0,
+        annualIncome: 0,
+        absenceCalendarDays: 365,
+        vacationDays: 0,
+        sickDays: 0,
+        sickInsuranceRate: 0.7,
+        maternityDays: 0
+      },
+      levelBonusByLevel: {
+        level1: 0,
+        level2: 3506.5,
+        level3: 7142.9
+      }
     }
   }
 };
@@ -219,7 +284,7 @@ export const ACCESS_CONFIG = {
   supervisor: {
     label: "СВ",
     envKey: "SUPERVISOR_ACCESS_CODE",
-    allowedCalculators: ["supervisor", "service", "level4", "xd"]
+    allowedCalculators: ["supervisor", "service", "level4", "xd", "video"]
   },
   level4: {
     label: "4 лвл",
@@ -230,6 +295,11 @@ export const ACCESS_CONFIG = {
     label: "ХД",
     envKey: "XD_ACCESS_CODE",
     allowedCalculators: ["xd"]
+  },
+  video: {
+    label: "Відеоверифікатор",
+    envKey: "VIDEO_ACCESS_CODE",
+    allowedCalculators: ["video"]
   }
 };
 

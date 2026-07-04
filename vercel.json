@@ -24,6 +24,10 @@
     {
       "source": "/xd",
       "destination": "/api/page?path=/xd"
+    },
+    {
+      "source": "/video",
+      "destination": "/api/page?path=/video"
     }
   ],
   "headers": [

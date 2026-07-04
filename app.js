@@ -245,6 +245,10 @@ function renderModeFields() {
   document.querySelectorAll("[data-mode]").forEach((field) => {
     field.hidden = field.dataset.mode !== calculatorType;
   });
+  document.querySelectorAll("[data-feature='bonus']").forEach((field) => {
+    field.hidden = !hasBonusInput();
+  });
+  renderBonusInput();
 }
 
 function renderModeLabels() {
@@ -320,7 +324,7 @@ function readInputs() {
     nightHours: data.get("nightHours"),
     holidayHours: data.get("holidayHours"),
     doubleHours: data.get("doubleHours"),
-    wowCases: hasWowBonus() ? data.get("wowCases") : 0,
+    wowCases: hasBonusInput() ? data.get("wowCases") : 0,
     fines: data.get("fines"),
     taxiAmount: data.get("taxiAmount"),
     tenureYears: data.get("tenureYears"),
@@ -442,11 +446,12 @@ function formulaRows(result) {
   ];
 
   if (isGrossCalculator()) {
+    const grossNote = result.taxableBonus > 0 ? ` (включно з бонусами ${formatCurrency(result.taxableBonus)})` : "";
     const wowText = hasWowBonus() ? ` + WOW ${formatCurrency(result.wowBonus)}` : "";
     rows.push(
       {
         label: "ЗП чистими",
-        formula: `${formatCurrency(result.baseGross)} - ${formatCurrency(result.baseTax)}${wowText} = ${formatCurrency(result.basePay)}`
+        formula: `${formatCurrency(result.baseGross)}${grossNote} - ${formatCurrency(result.baseTax)}${wowText} = ${formatCurrency(result.basePay)}`
       },
       {
         label: "Стаж чистими",
@@ -617,6 +622,7 @@ function grossRows(result) {
     [`Податок ЗП ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.baseTax],
     ["До виплати ЗП", result.basePay],
     ...(hasWowBonus() ? [["WOW-кейси", result.wowBonus]] : []),
+    ...(result.taxableBonus > 0 ? [["Додаткові бонуси до податку", result.taxableBonus]] : []),
     [`Стаж з податком ${Math.round(result.tenureRate * 100)}%`, result.tenureGross],
     [`Податок стаж ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.tenureTax],
     ["Стаж чистими", result.tenurePay],
@@ -843,8 +849,27 @@ function hasWowBonus(type = calculatorType) {
   return Boolean(CALCULATORS[type]?.hasWow);
 }
 
+function hasBonusInput(type = calculatorType) {
+  return Boolean(CALCULATORS[type]?.hasWow || CALCULATORS[type]?.bonusInputMode);
+}
+
+function isBonusAmount(type = calculatorType) {
+  return CALCULATORS[type]?.bonusInputMode === "amountTaxable";
+}
+
 function formatPercent(value) {
   return `${roundMoney((value ?? 0) * 100)}%`;
+}
+
+function renderBonusInput() {
+  const input = form.elements.wowCases;
+  const label = document.querySelector("#bonusInputLabel");
+  if (!input || !label) return;
+
+  label.textContent = CALCULATORS[calculatorType]?.bonusLabel ?? "WOW-кейси";
+  input.max = isBonusAmount() ? "" : "5";
+  input.step = isBonusAmount() ? "1" : "1";
+  input.inputMode = isBonusAmount() ? "decimal" : "numeric";
 }
 
 function applySavedTheme() {

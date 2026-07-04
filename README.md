@@ -6,6 +6,7 @@ SPA-калькулятор зарплати для ролей:
 - `/supervisor` - ЗП СВ
 - `/level4` - ЗП 4 лвл
 - `/xd` - ЗП ХД
+- `/video` - ЗП відеоверифікатора
 
 ## Безпека
 
@@ -24,6 +25,7 @@ SPA-калькулятор зарплати для ролей:
 - `SUPERVISOR_ACCESS_CODE`
 - `LEVEL4_ACCESS_CODE`
 - `XD_ACCESS_CODE`
+- `VIDEO_ACCESS_CODE`
 - `AUTH_SECRET`
 
 `AUTH_SECRET` має бути довгим випадковим рядком. Після зміни env-змінних потрібно зробити redeploy.
