@@ -70,7 +70,7 @@ const xdResult = calculatePayroll({
   tenureYears: 4
 }, "xd");
 
-const vkResult = calculatePayroll({
+const videoResult = calculatePayroll({
   month: "Липень",
   actualHours: 176,
   testsHigh: false,
@@ -86,9 +86,9 @@ const vkResult = calculatePayroll({
   tenureYears: 6,
   firstHalfHours: 79,
   secondHalfHours: 86
-}, "vk");
+}, "video");
 
-const vkMaxTenureResult = calculatePayroll({
+const videoMaxTenureResult = calculatePayroll({
   month: "Липень",
   actualHours: 176,
   testsHigh: false,
@@ -104,15 +104,15 @@ const vkMaxTenureResult = calculatePayroll({
   tenureYears: 20,
   firstHalfHours: 79,
   secondHalfHours: 86
-}, "vk");
+}, "video");
 
-const videoResult = calculatePayroll({
+const videoLevel2WhiteResult = calculatePayroll({
   month: "Липень",
   actualHours: 165,
   testsHigh: false,
   ratingZone: 3,
-  level: "level1",
-  salary: 23300,
+  level: "level2",
+  salary: 30360,
   nightHours: 0,
   holidayHours: 0,
   doubleHours: 0,
@@ -124,13 +124,13 @@ const videoResult = calculatePayroll({
   secondHalfHours: 82.5
 }, "video");
 
-const videoLevel2Zone4Result = calculatePayroll({
+const videoLevel2YellowResult = calculatePayroll({
   month: "Липень",
   actualHours: 165,
   testsHigh: false,
   ratingZone: 4,
   level: "level2",
-  salary: 23300,
+  salary: 30360,
   nightHours: 0,
   holidayHours: 0,
   doubleHours: 0,
@@ -148,7 +148,43 @@ const videoLevel3GreenResult = calculatePayroll({
   testsHigh: false,
   ratingZone: 1,
   level: "level3",
-  salary: 23300,
+  salary: 30360,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 0,
+  firstHalfHours: 82.5,
+  secondHalfHours: 82.5
+}, "video");
+
+const videoLevel3WhiteResult = calculatePayroll({
+  month: "Липень",
+  actualHours: 165,
+  testsHigh: false,
+  ratingZone: 3,
+  level: "level3",
+  salary: 30360,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 0,
+  firstHalfHours: 82.5,
+  secondHalfHours: 82.5
+}, "video");
+
+const videoLevel3YellowResult = calculatePayroll({
+  month: "Липень",
+  actualHours: 165,
+  testsHigh: false,
+  ratingZone: 4,
+  level: "level3",
+  salary: 30360,
   nightHours: 0,
   holidayHours: 0,
   doubleHours: 0,
@@ -205,35 +241,25 @@ const checks = [
   ["xd.basePay", xdResult.basePay, 31928.388121],
   ["xd.tenurePay", xdResult.tenurePay, 6556],
   ["xd.totalPay", xdResult.totalPay, 38484.388121],
-  ["vk.normHours", vkResult.normHours, 165],
-  ["vk.ratingBonus", vkResult.ratingBonus, 14580],
-  ["vk.levelBonus", vkResult.levelBonus, 7142.9],
-  ["vk.baseGross", vkResult.baseGross, 55555.093333],
-  ["vk.basePay", vkResult.basePay, 42777.421867],
-  ["vk.tenureGross", vkResult.tenureGross, 15501.2992],
-  ["vk.tenurePay", vkResult.tenurePay, 11936.000384],
-  ["vk.totalPay", vkResult.totalPay, 54713.422251],
-  ["vk.payment15", vkResult.paymentSchedule.midMonthPay, 17025.16],
-  ["vk.payment31", vkResult.paymentSchedule.monthEndPay, 13285.68],
-  ["vk.payment07", vkResult.paymentSchedule.nextMonthRatingPay, 12466.581867],
-  ["vk.maxTenure.inputYears", vkMaxTenureResult.input.tenureYears, 15],
-  ["vk.maxTenure.tenurePay", vkMaxTenureResult.tenurePay, 29840.00096],
-  ["vk.maxTenure.totalPay", vkMaxTenureResult.totalPay, 72617.422827],
   ["video.normHours", videoResult.normHours, 165],
-  ["video.ratingBonus", videoResult.ratingBonus, 14000],
+  ["video.ratingBonus", videoResult.ratingBonus, 14580],
   ["video.levelBonus", videoResult.levelBonus, 0],
-  ["video.baseGross", videoResult.baseGross, 37300],
-  ["video.basePay", videoResult.basePay, 37300],
-  ["video.tenureGross", videoResult.tenureGross, 0],
-  ["video.tenurePay", videoResult.tenurePay, 0],
-  ["video.totalPay", videoResult.totalPay, 37300],
-  ["video.payment15", videoResult.paymentSchedule.midMonthPay, 17250],
-  ["video.payment31", videoResult.paymentSchedule.monthEndPay, 11650],
-  ["video.payment07", videoResult.paymentSchedule.nextMonthRatingPay, 8400],
-  ["video.level2Zone4.levelBonus", videoLevel2Zone4Result.levelBonus, 0],
-  ["video.level2Zone4.totalPay", videoLevel2Zone4Result.totalPay, 35900],
-  ["video.level3Green.levelBonus", videoLevel3GreenResult.levelBonus, 5500],
-  ["video.level3Green.totalPay", videoLevel3GreenResult.totalPay, 45600]
+  ["video.baseGross", videoResult.baseGross, 47936],
+  ["video.basePay", videoResult.basePay, 36910.72],
+  ["video.tenureGross", videoResult.tenureGross, 15501.2992],
+  ["video.tenurePay", videoResult.tenurePay, 11936.000384],
+  ["video.totalPay", videoResult.totalPay, 48846.720384],
+  ["video.payment15", videoResult.paymentSchedule.midMonthPay, 17025.16],
+  ["video.payment31", videoResult.paymentSchedule.monthEndPay, 13285.68],
+  ["video.payment07", videoResult.paymentSchedule.nextMonthRatingPay, 6599.88],
+  ["video.maxTenure.inputYears", videoMaxTenureResult.input.tenureYears, 15],
+  ["video.maxTenure.tenurePay", videoMaxTenureResult.tenurePay, 29840.00096],
+  ["video.maxTenure.totalPay", videoMaxTenureResult.totalPay, 66750.72096],
+  ["video.level2White.levelBonusNet", videoLevel2WhiteResult.paymentSchedule.nextMonthParts.level, 2700],
+  ["video.level2Yellow.levelBonusNet", videoLevel2YellowResult.paymentSchedule.nextMonthParts.level, 0],
+  ["video.level3Green.levelBonusNet", videoLevel3GreenResult.paymentSchedule.nextMonthParts.level, 5500],
+  ["video.level3White.levelBonusNet", videoLevel3WhiteResult.paymentSchedule.nextMonthParts.level, 2700],
+  ["video.level3Yellow.levelBonusNet", videoLevel3YellowResult.paymentSchedule.nextMonthParts.level, 0]
 ];
 
 let failed = false;

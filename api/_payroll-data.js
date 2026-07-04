@@ -208,9 +208,9 @@ export const PAYROLL_CONFIG = {
         level3: { underZone3: 5575, zone3: 2787 }
       }
     },
-    vk: {
-      title: "ЗП ВК",
-      shortTitle: "ВК",
+    video: {
+      title: "ЗП відеоверифікатор",
+      shortTitle: "Відео",
       source: "Copy of Верифікатори ЗП від 1.03.26",
       taxMode: "gross",
       taxRate: 0.23,
@@ -253,76 +253,22 @@ export const PAYROLL_CONFIG = {
         sickInsuranceRate: 0.7,
         maternityDays: 0
       },
-      levelBonusByLevel: {
-        level1: 0,
-        level2: 3506.5,
-        level3: 7142.9
-      }
-    },
-    video: {
-      title: "ЗП відеоверифікатор",
-      shortTitle: "Відео",
-      source: "Калькулятор ЗП для графіка 2/2",
-      taxMode: "net",
-      taxRate: 0,
-      doublePayMode: "baseHourly",
-      bonusInputMode: "amountNet",
-      bonusLabel: "Додаткові бонуси, грн",
-      paymentScheduleMode: "videoVerifier",
-      fixedAdvanceNet: 11650,
-      variableFirstPartNet: 5600,
-      monthHours: {
-        "Січень": 165,
-        "Лютий": 154,
-        "Березень": 165,
-        "Квітень": 165,
-        "Травень": 165,
-        "Червень": 165,
-        "Липень": 165,
-        "Серпень": 165,
-        "Вересень": 165,
-        "Жовтень": 165,
-        "Листопад": 165,
-        "Грудень": 165
-      },
-      ratingBonusByZone: {
-        1: 16800,
-        2: 15400,
-        3: 14000,
-        4: 12600,
-        5: 11200
-      },
-      tenureBase: 0,
-      maxTenureYears: 0,
-      ratingFirstPartRate: 0,
-      defaultInputs: {
-        month: "Липень",
-        actualHours: 165,
-        testsHigh: false,
-        ratingZone: 3,
-        level: "level1",
-        salary: 23300,
-        nightHours: 0,
-        holidayHours: 0,
-        doubleHours: 0,
-        wowCases: 0,
-        fines: 0,
-        taxiAmount: 0,
-        tenureYears: 0,
-        firstHalfHours: 82.5,
-        secondHalfHours: 82.5,
-        ratingFirstPart: 0,
-        annualIncome: 0,
-        absenceCalendarDays: 365,
-        vacationDays: 0,
-        sickDays: 0,
-        sickInsuranceRate: 0.7,
-        maternityDays: 0
-      },
       levelBonusByLevelAndZone: {
         level1: { default: 0 },
-        level2: { 1: 2700, 2: 2700, 3: 2700, 4: 0, 5: 0 },
-        level3: { 1: 5500, 2: 5500, 3: 2700, 4: 0, 5: 0 }
+        level2: {
+          1: 2700 / 0.77,
+          2: 2700 / 0.77,
+          3: 2700 / 0.77,
+          4: 0,
+          5: 0
+        },
+        level3: {
+          1: 5500 / 0.77,
+          2: 5500 / 0.77,
+          3: 2700 / 0.77,
+          4: 0,
+          5: 0
+        }
       }
     }
   }
@@ -337,7 +283,7 @@ export const ACCESS_CONFIG = {
   supervisor: {
     label: "СВ",
     envKey: "SUPERVISOR_ACCESS_CODE",
-    allowedCalculators: ["supervisor", "service", "level4", "xd", "vk", "video"]
+    allowedCalculators: ["supervisor", "service", "level4", "xd", "video"]
   },
   level4: {
     label: "4 лвл",
@@ -348,11 +294,6 @@ export const ACCESS_CONFIG = {
     label: "ХД",
     envKey: "XD_ACCESS_CODE",
     allowedCalculators: ["xd"]
-  },
-  vk: {
-    label: "ВК",
-    envKey: "VK_ACCESS_CODE",
-    allowedCalculators: ["vk"]
   },
   video: {
     label: "Відеоверифікатор",

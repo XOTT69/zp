@@ -425,6 +425,9 @@ function formulaRows(result) {
   const doubleBaseFormula = CALCULATORS[calculatorType]?.doublePayMode === "baseHourly"
     ? formatCurrency(i.salary)
     : `(${formatCurrency(i.salary)} + ${formatCurrency(result.ratingBonus)})`;
+  const levelBonusFormula = isGrossCalculator()
+    ? `${formatCurrency(result.levelBonus)} до податку (${formatCurrency(result.levelBonus * (1 - CALCULATORS[calculatorType].taxRate))} чистими)`
+    : formatCurrency(result.levelBonus);
   const rows = [
     {
       label: "Години в розрахунку",
@@ -436,7 +439,7 @@ function formulaRows(result) {
     },
     {
       label: "Доплата рівня",
-      formula: `${levelLabel(i.level)}, зона ${i.ratingZone} -> ${formatCurrency(result.levelBonus)}`
+      formula: `${levelLabel(i.level)}, зона ${i.ratingZone} -> ${levelBonusFormula}`
     },
     {
       label: "Нічні",

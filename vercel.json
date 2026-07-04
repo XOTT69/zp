@@ -26,10 +26,6 @@
       "destination": "/api/page?path=/xd"
     },
     {
-      "source": "/vk",
-      "destination": "/api/page?path=/vk"
-    },
-    {
       "source": "/video",
       "destination": "/api/page?path=/video"
     }

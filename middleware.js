@@ -1,11 +1,11 @@
 import { readSessionFromCookie } from "./api/_auth.js";
 import { getSessionForRole } from "./api/_payroll-data.js";
 
-const APP_PATHS = new Set(["/", "/login", "/service", "/supervisor", "/level4", "/xd", "/vk", "/video"]);
-const CALCULATOR_PATHS = new Set(["/service", "/supervisor", "/level4", "/xd", "/vk", "/video"]);
+const APP_PATHS = new Set(["/", "/login", "/service", "/supervisor", "/level4", "/xd", "/video"]);
+const CALCULATOR_PATHS = new Set(["/service", "/supervisor", "/level4", "/xd", "/video"]);
 
 export const config = {
-  matcher: ["/", "/login", "/service", "/supervisor", "/level4", "/xd", "/vk", "/video"]
+  matcher: ["/", "/login", "/service", "/supervisor", "/level4", "/xd", "/video"]
 };
 
 export default async function middleware(request) {
