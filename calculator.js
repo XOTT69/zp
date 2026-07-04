@@ -18,22 +18,31 @@ export function configurePayrollData(payload) {
   LEVELS = payload.levels ?? [];
   PAYROLL_CONFIG = applyRuntimeConfigOverrides(payload.config ?? PAYROLL_CONFIG);
   CALCULATORS = Object.fromEntries(
-    Object.entries(PAYROLL_CONFIG.calculators).map(([key, config]) => [
-      key,
-      {
-        title: config.title,
-        shortTitle: config.shortTitle,
-        source: config.source,
-        taxMode: config.taxMode,
-        taxRate: getTaxRate(config),
-        hasWow: Boolean(config.wowCaseRate),
-        bonusInputMode: config.bonusInputMode ?? null,
-        bonusLabel: config.bonusLabel ?? "WOW-кейси",
-        deductionLabel: config.deductionLabel ?? "Штрафи",
-        scheduleOptions: config.scheduleOptions ?? null,
-        doublePayMode: config.doublePayMode ?? "salaryPlusRating"
-      }
-    ])
+    Object.entries(PAYROLL_CONFIG.calculators).map(([key, config]) => {
+      const ratingZones = config.ratingBonusByZone ?? {};
+      const activeZones = Object.entries(ratingZones)
+        .filter(([, v]) => v > 0)
+        .map(([k]) => Number(k));
+      const maxRatingZone = activeZones.length > 0 ? Math.max(...activeZones) : (PAYROLL_CONFIG.maxRatingZone ?? 5);
+      return [
+        key,
+        {
+          title: config.title,
+          shortTitle: config.shortTitle,
+          source: config.source,
+          taxMode: config.taxMode,
+          taxRate: getTaxRate(config),
+          hasWow: Boolean(config.wowCaseRate),
+          bonusInputMode: config.bonusInputMode ?? null,
+          bonusLabel: config.bonusLabel ?? "WOW-кейси",
+          deductionLabel: config.deductionLabel ?? "Штрафи",
+          scheduleOptions: config.scheduleOptions ?? null,
+          doublePayMode: config.doublePayMode ?? "salaryPlusRating",
+          ratingBonusByZone: ratingZones,
+          maxRatingZone
+        }
+      ];
+    })
   );
   DEFAULT_INPUTS_BY_TYPE = Object.fromEntries(
     Object.entries(PAYROLL_CONFIG.calculators).map(([key, config]) => [
@@ -123,7 +132,8 @@ export function calculateServicePayroll(input, calculatorType = "service") {
     taxiCompensation;
 
   const tenureRate = values.tenureYears >= 1 ? values.tenureYears * 0.05 : 0;
-  const tenureHours = config.tenureHoursMode === "separate" ? values.tenureHours : effectiveHours;
+  // Тест-година не впливає на стаж — використовуємо actualHours
+  const tenureHours = config.tenureHoursMode === "separate" ? values.tenureHours : values.actualHours;
   const tenurePay = ((config.tenureBase * tenureRate) / normHours) * tenureHours;
   const totalPay = basePay + tenurePay;
   const baseGross = basePay / (1 - taxRate);
@@ -231,7 +241,8 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
   const basePay = baseGross - baseTax + wowBonus - finesNet;
 
   const tenureRate = values.tenureYears >= 1 ? values.tenureYears * 0.05 : 0;
-  const tenureHours = config.tenureHoursMode === "separate" ? values.tenureHours : effectiveHours;
+  // Тест-година не впливає на стаж — використовуємо actualHours
+  const tenureHours = config.tenureHoursMode === "separate" ? values.tenureHours : values.actualHours;
   const tenureBasePay = config.tenureTaxMode === "netPlusTaxOnNet"
     ? config.tenureBase * tenureRate
     : ((config.tenureBase * tenureRate) / normHours) * tenureHours;

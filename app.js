@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=29";
+} from "./calculator.js?v=30";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
@@ -315,8 +315,10 @@ function renderRatingButtons(activeZone) {
 
 function getMaxRatingZone(config) {
   if (!config) return 5;
+  // maxRatingZone розраховується в calculator.js при configurePayrollData
+  if (typeof config.maxRatingZone === "number") return config.maxRatingZone;
+  // Запасний варіант: обчислюємо вручну з ratingBonusByZone
   const zones = Object.entries(config.ratingBonusByZone ?? {});
-  // Знаходимо найбільшу зону з ненульовою ставкою
   const activeZones = zones.filter(([, v]) => v > 0).map(([k]) => Number(k));
   return activeZones.length > 0 ? Math.max(...activeZones) : 5;
 }
