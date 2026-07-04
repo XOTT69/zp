@@ -422,6 +422,9 @@ function renderFormulaList(result) {
 
 function formulaRows(result) {
   const i = result.input;
+  const doubleBaseFormula = CALCULATORS[calculatorType]?.doublePayMode === "baseHourly"
+    ? formatCurrency(i.salary)
+    : `(${formatCurrency(i.salary)} + ${formatCurrency(result.ratingBonus)})`;
   const rows = [
     {
       label: "Години в розрахунку",
@@ -441,7 +444,7 @@ function formulaRows(result) {
     },
     {
       label: "Оплата X2",
-      formula: `(${formatCurrency(i.salary)} + ${formatCurrency(result.ratingBonus)}) / ${result.normHours} * ${roundMoney(i.doubleHours)} = ${formatCurrency(result.doublePay)}`
+      formula: `${doubleBaseFormula} / ${result.normHours} * ${roundMoney(i.doubleHours)} = ${formatCurrency(result.doublePay)}`
     }
   ];
 
@@ -469,6 +472,13 @@ function formulaRows(result) {
         formula: `база стажу * ${Math.round(result.tenureRate * 100)}% / ${result.normHours} * ${roundMoney(i.actualHours)} = ${formatCurrency(result.tenurePay)}`
       }
     );
+  }
+
+  if (result.bonusNet > 0) {
+    rows.push({
+      label: "Додаткові бонуси",
+      formula: `${formatCurrency(result.bonusNet)} додано чистими до ЗП`
+    });
   }
 
   rows.push({
@@ -854,7 +864,7 @@ function hasBonusInput(type = calculatorType) {
 }
 
 function isBonusAmount(type = calculatorType) {
-  return CALCULATORS[type]?.bonusInputMode === "amountTaxable";
+  return CALCULATORS[type]?.bonusInputMode === "amountTaxable" || CALCULATORS[type]?.bonusInputMode === "amountNet";
 }
 
 function formatPercent(value) {

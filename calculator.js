@@ -27,7 +27,8 @@ export function configurePayrollData(payload) {
         taxRate: getTaxRate(config),
         hasWow: Boolean(config.wowCaseRate),
         bonusInputMode: config.bonusInputMode ?? null,
-        bonusLabel: config.bonusLabel ?? "WOW-кейси"
+        bonusLabel: config.bonusLabel ?? "WOW-кейси",
+        doublePayMode: config.doublePayMode ?? "salaryPlusRating"
       }
     ])
   );
@@ -74,6 +75,7 @@ export function calculateServicePayroll(input, calculatorType = "service") {
   const nightPay = (values.salary / normHours) * values.nightHours * 0.2;
   const holidayPay = (values.salary / normHours) * values.holidayHours;
   const doublePay = getDoublePay(values, config, ratingBonus, normHours);
+  const bonusNet = config.bonusInputMode === "amountNet" ? values.wowCases : 0;
   const taxiCompensation = (values.taxiAmount / PAYROLL_CONFIG.taxiDivisor) * 100;
 
   const basePay =
@@ -82,6 +84,7 @@ export function calculateServicePayroll(input, calculatorType = "service") {
     holidayPay +
     doublePay -
     values.fines +
+    bonusNet +
     taxiCompensation;
 
   const tenureRate = values.tenureYears >= 1 ? values.tenureYears * 0.05 : 0;
@@ -106,8 +109,12 @@ export function calculateServicePayroll(input, calculatorType = "service") {
     tenurePay,
     wowBonus: 0,
     taxableBonus: 0,
+    bonusNet,
     isGrossMode: false,
     taxRate,
+    paymentScheduleMode: config.paymentScheduleMode,
+    fixedAdvanceNet: config.fixedAdvanceNet,
+    variableFirstPartNet: config.variableFirstPartNet,
     paymentHourlyRates: config.paymentHourlyRates
   });
   const absencePayments = calculateAbsencePayments(values);
@@ -124,6 +131,8 @@ export function calculateServicePayroll(input, calculatorType = "service") {
     doublePay,
     taxiCompensation,
     wowBonus: 0,
+    taxableBonus: 0,
+    bonusNet,
     basePay,
     baseGross,
     baseTax,
@@ -209,7 +218,8 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
     isGrossMode: true,
     taxRate,
     paymentScheduleMode: config.paymentScheduleMode,
-    advanceBaseNet: config.advanceBaseNet,
+    fixedAdvanceNet: config.fixedAdvanceNet,
+    variableFirstPartNet: config.variableFirstPartNet,
     paymentHourlyRates: config.paymentHourlyRates
   });
   const absencePayments = calculateAbsencePayments(values);
@@ -262,6 +272,10 @@ export function getSupervisorLevelBonus(level, ratingZone) {
 
 export function getLevelBonus(level, ratingZone, calculatorType = "service") {
   const config = PAYROLL_CONFIG.calculators[calculatorType];
+  const zoneRules = config?.levelBonusByLevelAndZone?.[level];
+  if (zoneRules) {
+    return zoneRules[ratingZone] ?? zoneRules.default ?? 0;
+  }
   if (config?.levelBonusByLevel) {
     return config.levelBonusByLevel[level] ?? 0;
   }
@@ -376,7 +390,8 @@ function calculatePaymentSchedule(values, parts) {
   const ratingFirstPart = Math.min(values.ratingFirstPart, ratingWorked);
   const ratingSecondPart = Math.max(0, ratingWorked - ratingFirstPart);
   const levelPay = (parts.levelBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
-  const extras = (parts.nightPay + parts.holidayPay + parts.doublePay + parts.taxableBonus + parts.taxiCompensation - parts.fines) * taxMultiplier;
+  const extrasGross = parts.nightPay + parts.holidayPay + parts.doublePay + parts.taxableBonus + parts.taxiCompensation - parts.fines;
+  const extras = extrasGross * taxMultiplier + (parts.bonusNet ?? 0);
   const nextMonthRatingPay = ratingSecondPart + levelPay + extras + fixedSettlement;
   const midMonthPay = fixedAdvance + ratingFirstPart + parts.wowBonus;
   const monthEndPay = fixedMonthEnd;
@@ -413,19 +428,16 @@ function calculatePaymentSchedule(values, parts) {
 }
 
 function calculateVideoVerifierPaymentSchedule(values, parts) {
-  const taxMultiplier = 1 - parts.taxRate;
-  const firstHalfHours = Math.min(values.firstHalfHours, parts.effectiveHours);
-  const fixedWorked = (values.salary / parts.normHours) * parts.effectiveHours * taxMultiplier;
-  const fixedAdvance = Math.min(fixedWorked, parts.advanceBaseNet ?? fixedWorked / 2);
+  const workFactor = parts.normHours ? parts.effectiveHours / parts.normHours : 0;
+  const fixedWorked = (values.salary / parts.normHours) * parts.effectiveHours;
+  const fixedAdvanceTarget = (parts.fixedAdvanceNet ?? values.salary / 2) * workFactor;
+  const fixedAdvance = Math.min(fixedWorked, fixedAdvanceTarget);
   const fixedMonthEnd = Math.max(0, fixedWorked - fixedAdvance);
-  const ratingWorked = (parts.ratingBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
-  const ratingFirstPart = Math.min(
-    ratingWorked,
-    (parts.ratingBonus / parts.normHours) * firstHalfHours * taxMultiplier
-  );
+  const ratingWorked = (parts.ratingBonus / parts.normHours) * parts.effectiveHours;
+  const ratingFirstPart = Math.min(ratingWorked, (parts.variableFirstPartNet ?? 0) * workFactor);
   const ratingSecondPart = Math.max(0, ratingWorked - ratingFirstPart);
-  const levelPay = (parts.levelBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
-  const extras = (parts.nightPay + parts.holidayPay + parts.doublePay + parts.taxableBonus + parts.taxiCompensation - parts.fines) * taxMultiplier;
+  const levelPay = (parts.levelBonus / parts.normHours) * parts.effectiveHours;
+  const extras = parts.nightPay + parts.holidayPay + parts.doublePay + (parts.bonusNet ?? 0) + parts.taxiCompensation - parts.fines;
   const nextMonthRatingPay = ratingSecondPart + levelPay + extras;
   const midMonthPay = fixedAdvance + ratingFirstPart;
 
@@ -489,7 +501,7 @@ function getDoublePay(values, config, ratingBonus, normHours) {
 
 function normalizeBonusInput(value, config) {
   const numberValue = Math.max(0, toNumber(value));
-  if (config.bonusInputMode === "amountTaxable") {
+  if (config.bonusInputMode === "amountTaxable" || config.bonusInputMode === "amountNet") {
     return numberValue;
   }
   return Math.min(PAYROLL_CONFIG.maxWowCases, Math.max(0, Math.round(numberValue)));

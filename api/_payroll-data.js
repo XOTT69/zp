@@ -1,16 +1,16 @@
 export const MONTHS = [
-  { name: "Січень", hours: 176 },
+  { name: "Січень", hours: 165 },
   { name: "Лютий", hours: 154 },
-  { name: "Березень", hours: 176 },
-  { name: "Квітень", hours: 176 },
-  { name: "Травень", hours: 168 },
-  { name: "Червень", hours: 176 },
-  { name: "Липень", hours: 184 },
-  { name: "Серпень", hours: 168 },
-  { name: "Вересень", hours: 176 },
-  { name: "Жовтень", hours: 176 },
-  { name: "Листопад", hours: 168 },
-  { name: "Грудень", hours: 184 }
+  { name: "Березень", hours: 165 },
+  { name: "Квітень", hours: 165 },
+  { name: "Травень", hours: 165 },
+  { name: "Червень", hours: 165 },
+  { name: "Липень", hours: 165 },
+  { name: "Серпень", hours: 165 },
+  { name: "Вересень", hours: 165 },
+  { name: "Жовтень", hours: 165 },
+  { name: "Листопад", hours: 165 },
+  { name: "Грудень", hours: 165 }
 ];
 
 export const LEVELS = [
@@ -211,13 +211,14 @@ export const PAYROLL_CONFIG = {
       title: "ЗП відеоверифікатор",
       shortTitle: "Відео",
       source: "Калькулятор ЗП для графіка 2/2",
-      taxMode: "gross",
-      taxRate: 0.23,
+      taxMode: "net",
+      taxRate: 0,
       doublePayMode: "baseHourly",
-      bonusInputMode: "amountTaxable",
-      bonusLabel: "ВАУ / додаткові бонуси, грн",
+      bonusInputMode: "amountNet",
+      bonusLabel: "Додаткові бонуси, грн",
       paymentScheduleMode: "videoVerifier",
-      advanceBaseNet: 11650,
+      fixedAdvanceNet: 11650,
+      variableFirstPartNet: 5600,
       monthHours: {
         "Січень": 165,
         "Лютий": 154,
@@ -233,31 +234,31 @@ export const PAYROLL_CONFIG = {
         "Грудень": 165
       },
       ratingBonusByZone: {
-        1: 52233 - 30360,
-        2: 50410 - 30360,
-        3: 48587 - 30360,
-        4: 46764 - 30360,
-        5: 44940 - 30360
+        1: 16800,
+        2: 15400,
+        3: 14000,
+        4: 12600,
+        5: 11200
       },
-      tenureBase: 48441.56,
-      maxTenureYears: 6,
+      tenureBase: 0,
+      maxTenureYears: 0,
       ratingFirstPartRate: 0,
       defaultInputs: {
         month: "Липень",
-        actualHours: 176,
+        actualHours: 165,
         testsHigh: false,
-        ratingZone: 5,
-        level: "level3",
-        salary: 30360,
+        ratingZone: 3,
+        level: "level1",
+        salary: 23300,
         nightHours: 0,
         holidayHours: 0,
         doubleHours: 0,
         wowCases: 0,
         fines: 0,
         taxiAmount: 0,
-        tenureYears: 6,
-        firstHalfHours: 79,
-        secondHalfHours: 86,
+        tenureYears: 0,
+        firstHalfHours: 82.5,
+        secondHalfHours: 82.5,
         ratingFirstPart: 0,
         annualIncome: 0,
         absenceCalendarDays: 365,
@@ -266,10 +267,10 @@ export const PAYROLL_CONFIG = {
         sickInsuranceRate: 0.7,
         maternityDays: 0
       },
-      levelBonusByLevel: {
-        level1: 0,
-        level2: 3506.5,
-        level3: 7142.9
+      levelBonusByLevelAndZone: {
+        level1: { default: 0 },
+        level2: { 1: 2700, 2: 2700, 3: 2700, 4: 0, 5: 0 },
+        level3: { 1: 5500, 2: 5500, 3: 2700, 4: 0, 5: 0 }
       }
     }
   }
