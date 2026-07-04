@@ -27,6 +27,7 @@ const resetButton = document.querySelector("#resetButton");
 const copyButton = document.querySelector("#copyButton");
 const printButton = document.querySelector("#printButton");
 const logoutButton = document.querySelector("#logoutButton");
+const themeToggle = document.querySelector("#themeToggle");
 const roleBadge = document.querySelector("#roleBadge");
 const addScenarioButton = document.querySelector("#addScenarioButton");
 const clearScenariosButton = document.querySelector("#clearScenariosButton");
@@ -38,6 +39,8 @@ const paymentGrid = document.querySelector("#paymentGrid");
 const absenceGrid = document.querySelector("#absenceGrid");
 const toast = document.querySelector("#toast");
 const MAX_SCENARIOS = 6;
+const THEME_STORAGE_KEY = "zp-theme";
+const APP_EYEBROW = "Калькулятор ЗП для графіка 2/2";
 
 let calculatorType = null;
 let selectedRatingZone = 1;
@@ -47,6 +50,7 @@ let accessSession = null;
 init();
 
 async function init() {
+  applySavedTheme();
   accessForm.addEventListener("submit", handleAccessSubmit);
   form.addEventListener("input", update);
   form.addEventListener("change", update);
@@ -55,6 +59,7 @@ async function init() {
   copyButton.addEventListener("click", copySummary);
   printButton.addEventListener("click", printReport);
   logoutButton.addEventListener("click", logout);
+  themeToggle.addEventListener("click", toggleTheme);
   addScenarioButton.addEventListener("click", addScenario);
   clearScenariosButton.addEventListener("click", clearScenarios);
   scenarioList.addEventListener("click", handleScenarioClick);
@@ -115,7 +120,7 @@ function renderRoute() {
 
   if (isHome) {
     document.querySelector("#appTitle").textContent = "Калькулятор ЗП";
-    document.querySelector("#appEyebrow").textContent = "Актуально з 01.03.2026";
+    document.querySelector("#appEyebrow").textContent = APP_EYEBROW;
     return;
   }
 
@@ -124,7 +129,7 @@ function renderRoute() {
   selectedRatingZone = inputs.ratingZone;
 
   document.querySelector("#appTitle").textContent = config.title;
-  document.querySelector("#appEyebrow").textContent = config.source;
+  document.querySelector("#appEyebrow").textContent = APP_EYEBROW;
   document.querySelector(".visual-panel h2").textContent = config.shortTitle;
   document.querySelector(".visual-panel .eyebrow").textContent = "2/2";
 
@@ -149,7 +154,7 @@ function renderAccessGate() {
   logoutButton.hidden = true;
   roleBadge.hidden = true;
   document.querySelector("#appTitle").textContent = "Калькулятор ЗП";
-  document.querySelector("#appEyebrow").textContent = "Потрібен код доступу";
+  document.querySelector("#appEyebrow").textContent = APP_EYEBROW;
 }
 
 async function handleAccessSubmit(event) {
@@ -840,4 +845,34 @@ function hasWowBonus(type = calculatorType) {
 
 function formatPercent(value) {
   return `${roundMoney((value ?? 0) * 100)}%`;
+}
+
+function applySavedTheme() {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  const theme = savedTheme === "dark" || savedTheme === "light"
+    ? savedTheme
+    : document.documentElement.dataset.theme || preferredTheme();
+  setTheme(theme, Boolean(savedTheme));
+}
+
+function toggleTheme() {
+  const nextTheme = currentTheme() === "dark" ? "light" : "dark";
+  setTheme(nextTheme, true);
+}
+
+function setTheme(theme, persist) {
+  document.documentElement.dataset.theme = theme;
+  if (persist) {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }
+  themeToggle.textContent = theme === "dark" ? "Світла" : "Темна";
+  themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
+}
+
+function currentTheme() {
+  return document.documentElement.dataset.theme || preferredTheme();
+}
+
+function preferredTheme() {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }

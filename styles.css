@@ -18,6 +18,23 @@
     sans-serif;
 }
 
+:root[data-theme="dark"] {
+  --bg: #101817;
+  --panel: #182220;
+  --panel-soft: #20332d;
+  --ink: #edf7f3;
+  --muted: #9db0aa;
+  --line: rgba(230, 246, 240, 0.14);
+  --accent: #35c08f;
+  --accent-strong: #86f0c2;
+  --accent-soft: rgba(53, 192, 143, 0.16);
+  --blue: #78aef2;
+  --amber: #f2b15d;
+  --danger: #ff9f9f;
+  --glass: rgba(24, 34, 32, 0.78);
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -30,6 +47,13 @@ body {
     radial-gradient(circle at 10% 6%, rgba(8, 122, 91, 0.16), transparent 30rem),
     radial-gradient(circle at 88% 12%, rgba(29, 99, 183, 0.13), transparent 32rem),
     linear-gradient(135deg, #fbfcfd 0%, var(--bg) 48%, #eff8f4 100%);
+}
+
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 10% 6%, rgba(53, 192, 143, 0.13), transparent 30rem),
+    radial-gradient(circle at 88% 12%, rgba(120, 174, 242, 0.11), transparent 32rem),
+    linear-gradient(135deg, #0c1211 0%, var(--bg) 54%, #101b18 100%);
 }
 
 button,
@@ -923,6 +947,72 @@ h2 {
   transform: translateY(0);
 }
 
+:root[data-theme="dark"] .access-form input,
+:root[data-theme="dark"] .access-form select,
+:root[data-theme="dark"] .summary-strip > div,
+:root[data-theme="dark"] .field input,
+:root[data-theme="dark"] .field select,
+:root[data-theme="dark"] .segment,
+:root[data-theme="dark"] .toggle-field,
+:root[data-theme="dark"] .breakdown-row,
+:root[data-theme="dark"] .report-panel,
+:root[data-theme="dark"] .absence-row,
+:root[data-theme="dark"] .scenario-item {
+  color: var(--ink);
+  background: var(--panel);
+}
+
+:root[data-theme="dark"] .input-drawer,
+:root[data-theme="dark"] .formula-panel,
+:root[data-theme="dark"] .result-grid article,
+:root[data-theme="dark"] .payment-card {
+  background: rgba(24, 34, 32, 0.82);
+}
+
+:root[data-theme="dark"] .field span,
+:root[data-theme="dark"] .field legend,
+:root[data-theme="dark"] .toggle-field span {
+  color: #d6e5df;
+}
+
+:root[data-theme="dark"] .field input[readonly] {
+  color: #c7d8d2;
+  background: #23302d;
+}
+
+:root[data-theme="dark"] .summary-main {
+  background: linear-gradient(135deg, rgba(24, 34, 32, 0.96), var(--accent-soft)) !important;
+}
+
+:root[data-theme="dark"] .notice.info {
+  color: #b9ddff;
+  background: rgba(29, 99, 183, 0.18);
+}
+
+:root[data-theme="dark"] .notice.warning {
+  color: #ffd99a;
+  background: rgba(185, 112, 12, 0.18);
+}
+
+:root[data-theme="dark"] .notice.success {
+  color: #b6f4d0;
+  background: rgba(53, 192, 143, 0.16);
+}
+
+:root[data-theme="dark"] .scenario-delta.positive {
+  color: #a7f3d0;
+  background: rgba(53, 192, 143, 0.16);
+}
+
+:root[data-theme="dark"] .scenario-delta.negative {
+  color: #fecaca;
+  background: rgba(159, 45, 45, 0.2);
+}
+
+:root[data-theme="dark"] .icon-button:hover {
+  background: rgba(159, 45, 45, 0.18);
+}
+
 @media (max-width: 860px) {
   .shell {
     width: min(100% - 20px, 720px);
@@ -1008,7 +1098,7 @@ h2 {
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #101817;
     --panel: #182220;
     --panel-soft: #20332d;
@@ -1025,76 +1115,76 @@ h2 {
     --shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
   }
 
-  body {
+  :root:not([data-theme]) body {
     background:
       radial-gradient(circle at 10% 6%, rgba(53, 192, 143, 0.13), transparent 30rem),
       radial-gradient(circle at 88% 12%, rgba(120, 174, 242, 0.11), transparent 32rem),
       linear-gradient(135deg, #0c1211 0%, var(--bg) 54%, #101b18 100%);
   }
 
-  .access-form input,
-  .access-form select,
-  .summary-strip > div,
-  .field input,
-  .field select,
-  .segment,
-  .toggle-field,
-  .breakdown-row,
-  .report-panel,
-  .absence-row,
-  .scenario-item {
+  :root:not([data-theme]) .access-form input,
+  :root:not([data-theme]) .access-form select,
+  :root:not([data-theme]) .summary-strip > div,
+  :root:not([data-theme]) .field input,
+  :root:not([data-theme]) .field select,
+  :root:not([data-theme]) .segment,
+  :root:not([data-theme]) .toggle-field,
+  :root:not([data-theme]) .breakdown-row,
+  :root:not([data-theme]) .report-panel,
+  :root:not([data-theme]) .absence-row,
+  :root:not([data-theme]) .scenario-item {
     color: var(--ink);
     background: var(--panel);
   }
 
-  .input-drawer,
-  .formula-panel,
-  .result-grid article,
-  .payment-card {
+  :root:not([data-theme]) .input-drawer,
+  :root:not([data-theme]) .formula-panel,
+  :root:not([data-theme]) .result-grid article,
+  :root:not([data-theme]) .payment-card {
     background: rgba(24, 34, 32, 0.82);
   }
 
-  .field span,
-  .field legend,
-  .toggle-field span {
+  :root:not([data-theme]) .field span,
+  :root:not([data-theme]) .field legend,
+  :root:not([data-theme]) .toggle-field span {
     color: #d6e5df;
   }
 
-  .field input[readonly] {
+  :root:not([data-theme]) .field input[readonly] {
     color: #c7d8d2;
     background: #23302d;
   }
 
-  .summary-main {
+  :root:not([data-theme]) .summary-main {
     background: linear-gradient(135deg, rgba(24, 34, 32, 0.96), var(--accent-soft)) !important;
   }
 
-  .notice.info {
+  :root:not([data-theme]) .notice.info {
     color: #b9ddff;
     background: rgba(29, 99, 183, 0.18);
   }
 
-  .notice.warning {
+  :root:not([data-theme]) .notice.warning {
     color: #ffd99a;
     background: rgba(185, 112, 12, 0.18);
   }
 
-  .notice.success {
+  :root:not([data-theme]) .notice.success {
     color: #b6f4d0;
     background: rgba(53, 192, 143, 0.16);
   }
 
-  .scenario-delta.positive {
+  :root:not([data-theme]) .scenario-delta.positive {
     color: #a7f3d0;
     background: rgba(53, 192, 143, 0.16);
   }
 
-  .scenario-delta.negative {
+  :root:not([data-theme]) .scenario-delta.negative {
     color: #fecaca;
     background: rgba(159, 45, 45, 0.2);
   }
 
-  .icon-button:hover {
+  :root:not([data-theme]) .icon-button:hover {
     background: rgba(159, 45, 45, 0.18);
   }
 }

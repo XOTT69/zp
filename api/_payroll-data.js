@@ -72,7 +72,7 @@ export const PAYROLL_CONFIG = {
     supervisor: {
       title: "ЗП СВ",
       shortTitle: "СВ",
-      source: "Калькулятор ЗП+15% 1.03.2026",
+      source: "Калькулятор ЗП для графіка 2/2",
       taxMode: "gross",
       taxRate: 0.23,
       ratingBonusByZone: {
@@ -121,7 +121,7 @@ export const PAYROLL_CONFIG = {
     level4: {
       title: "ЗП 4 лвл",
       shortTitle: "4 лвл",
-      source: "Калькулятор ЗП для графіка 2/2 01.03.2026",
+      source: "Калькулятор ЗП для графіка 2/2",
       taxMode: "gross",
       taxRate: 0.23,
       ratingBonusByZone: {
@@ -165,7 +165,7 @@ export const PAYROLL_CONFIG = {
     xd: {
       title: "ЗП ХД",
       shortTitle: "ХД",
-      source: "Розрахунок ЗП – ХД 01.03.2026",
+      source: "Калькулятор ЗП для графіка 2/2",
       taxMode: "gross",
       taxRate: 0.195,
       tenureTaxMode: "netPlusTaxOnNet",
