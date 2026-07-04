@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=28";
+} from "./calculator.js?v=29";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
@@ -41,8 +41,8 @@ const toast = document.querySelector("#toast");
 const MAX_SCENARIOS = 6;
 const THEME_STORAGE_KEY = "zp-theme";
 const APP_EYEBROW = "Калькулятор ЗП для графіка 2/2";
-const ACTIVE_ACCESS_ROLES = new Set(["operator", "supervisor", "level4", "xd", "video"]);
-const ACTIVE_CALCULATOR_KEYS = new Set(["service", "supervisor", "level4", "xd", "video"]);
+const ACTIVE_ACCESS_ROLES = new Set(["operator", "supervisor", "level4", "xd", "video", "iron"]);
+const ACTIVE_CALCULATOR_KEYS = new Set(["service", "supervisor", "level4", "xd", "video", "iron"]);
 
 let calculatorType = null;
 let selectedRatingZone = 1;
@@ -134,7 +134,7 @@ function renderRoute() {
   document.querySelector("#appTitle").textContent = config.title;
   document.querySelector("#appEyebrow").textContent = APP_EYEBROW;
   document.querySelector(".visual-panel h2").textContent = config.shortTitle;
-  document.querySelector(".visual-panel .eyebrow").textContent = "2/2";
+  document.querySelector(".visual-panel .eyebrow").textContent = inputs.workSchedule ?? "2/2";
 
   fillForm(inputs);
   renderRatingButtons(selectedRatingZone);
@@ -270,7 +270,15 @@ function renderModeFields() {
   document.querySelectorAll("[data-feature='tests']").forEach((field) => {
     field.hidden = !hasTestsInput();
   });
+  document.querySelectorAll("[data-feature='workSchedule']").forEach((field) => {
+    field.hidden = !hasWorkScheduleInput();
+  });
+  document.querySelectorAll("[data-feature='tenureHours']").forEach((field) => {
+    field.hidden = !hasTenureHoursInput();
+  });
+  renderScheduleOptions();
   renderBonusInput();
+  renderDeductionInput();
 }
 
 function renderModeLabels() {
@@ -339,6 +347,7 @@ function readInputs() {
   const defaults = getDefaultInputs(calculatorType);
   return {
     month: data.get("month"),
+    workSchedule: hasWorkScheduleInput() ? data.get("workSchedule") : defaults.workSchedule,
     actualHours: data.get("actualHours"),
     testsHigh: hasTestsInput() && form.elements.testsHigh.checked,
     ratingZone: selectedRatingZone,
@@ -351,6 +360,7 @@ function readInputs() {
     fines: data.get("fines"),
     taxiAmount: data.get("taxiAmount"),
     tenureYears: data.get("tenureYears"),
+    tenureHours: hasTenureHoursInput() ? data.get("tenureHours") : data.get("actualHours"),
     firstHalfHours: data.get("firstHalfHours"),
     secondHalfHours: data.get("secondHalfHours"),
     ratingFirstPart: defaults.ratingFirstPart,
@@ -369,6 +379,7 @@ function renderResult(result) {
   setText("#totalTax", formatCurrency(result.tax));
   setText("#monthNorm", `${result.normHours} год`);
   setText("#effectiveHours", roundMoney(result.effectiveHours));
+  document.querySelector(".visual-panel .eyebrow").textContent = result.input.workSchedule ?? "2/2";
   setText("#baseNet", formatCurrency(result.basePay));
   setText("#tenureNet", formatCurrency(result.tenurePay));
   setText("#ratingBonus", formatCurrency(result.ratingBonus));
@@ -490,8 +501,8 @@ function formulaRows(result) {
         formula: `${formatCurrency(result.baseGross)}${grossNote} - ${formatCurrency(result.baseTax)}${wowText} = ${formatCurrency(result.basePay)}`
       },
       {
-        label: "Стаж чистими",
-        formula: `${formatCurrency(result.tenureGross)} - ${formatCurrency(result.tenureTax)} = ${formatCurrency(result.tenurePay)}`
+      label: "Стаж чистими",
+      formula: `${formatCurrency(result.tenureGross)} - ${formatCurrency(result.tenureTax)} = ${formatCurrency(result.tenurePay)}`
       }
     );
   } else {
@@ -502,7 +513,7 @@ function formulaRows(result) {
       },
       {
         label: "Премія стаж",
-        formula: `база стажу * ${Math.round(result.tenureRate * 100)}% / ${result.normHours} * ${roundMoney(i.actualHours)} = ${formatCurrency(result.tenurePay)}`
+        formula: `база стажу * ${Math.round(result.tenureRate * 100)}% / ${result.normHours} * ${roundMoney(result.tenureHours)} = ${formatCurrency(result.tenurePay)}`
       }
     );
   }
@@ -608,8 +619,10 @@ function renderReport(result) {
   const rows = [
     ["Тип", config.title],
     ["Місяць", result.input.month],
+    ...(hasWorkScheduleInput() ? [["Графік", result.input.workSchedule]] : []),
     ["Фактичні години", roundMoney(result.input.actualHours)],
     ["Години в розрахунку", roundMoney(result.effectiveHours)],
+    ...(hasTenureHoursInput() ? [["Години для стажу", roundMoney(result.tenureHours)]] : []),
     ["Зона рейтингу", result.input.ratingZone],
     ["Кваліфікаційний рівень", levelLabel(result.input.level)],
     ["Оклад", formatCurrency(result.input.salary)],
@@ -667,6 +680,7 @@ function grossRows(result) {
     ["ЗП чистими", result.basePay],
     ...(hasWowBonus() ? [["WOW-кейси", result.wowBonus]] : []),
     ...(result.taxableBonus > 0 ? [["Додаткові бонуси до податку", result.taxableBonus]] : []),
+    ...(result.input.fines > 0 ? [[CALCULATORS[calculatorType]?.deductionLabel ?? "Штрафи", -result.input.fines]] : []),
     [`Стаж до податку ${Math.round(result.tenureRate * 100)}%`, result.tenureGross],
     [`Податок зі стажу ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.tenureTax],
     ["Стаж чистими", result.tenurePay],
@@ -818,6 +832,9 @@ function loadInputs(type) {
     if (type === "video") {
       saved.testsHigh = false;
     }
+    if (type === "iron") {
+      saved.testsHigh = false;
+    }
     if (saved.secondHalfHours === undefined) {
       saved.secondHalfHours = defaults.secondHalfHours;
     }
@@ -869,7 +886,15 @@ function getLevelBonusDisplayValue(result) {
 }
 
 function hasTestsInput(type = calculatorType) {
-  return type !== "video";
+  return type !== "video" && type !== "iron";
+}
+
+function hasWorkScheduleInput(type = calculatorType) {
+  return Boolean(CALCULATORS[type]?.scheduleOptions?.length);
+}
+
+function hasTenureHoursInput(type = calculatorType) {
+  return type === "iron";
 }
 
 function setText(selector, value) {
@@ -934,6 +959,30 @@ function renderBonusInput() {
   input.max = isBonusAmount() ? "" : "5";
   input.step = isBonusAmount() ? "1" : "1";
   input.inputMode = isBonusAmount() ? "decimal" : "numeric";
+}
+
+function renderDeductionInput() {
+  const label = document.querySelector("#deductionInputLabel");
+  if (!label) return;
+  label.textContent = CALCULATORS[calculatorType]?.deductionLabel ?? "Штрафи";
+}
+
+function renderScheduleOptions() {
+  const group = document.querySelector("#workScheduleGroup");
+  const options = CALCULATORS[calculatorType]?.scheduleOptions;
+  if (!group || !options?.length) return;
+
+  const current = form.elements.workSchedule?.value || getDefaultInputs(calculatorType).workSchedule || options[0].value;
+  group.innerHTML = options
+    .map(
+      (option) => `
+        <label>
+          <input type="radio" name="workSchedule" value="${option.value}" ${option.value === current ? "checked" : ""} />
+          <span>${option.label}</span>
+        </label>
+      `
+    )
+    .join("");
 }
 
 function applySavedTheme() {

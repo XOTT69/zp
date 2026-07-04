@@ -270,6 +270,92 @@ export const PAYROLL_CONFIG = {
           5: 0
         }
       }
+    },
+    iron: {
+      title: "ЗП IRON",
+      shortTitle: "IRON",
+      source: "Копия Розрахувати зарплату (оператор айрон)",
+      taxMode: "gross",
+      taxRate: 0.23,
+      finesMode: "net",
+      deductionLabel: "Сума БУР",
+      tenureHoursMode: "separate",
+      scheduleOptions: [
+        { value: "2/2", label: "2/2" },
+        { value: "5/2", label: "5/2" }
+      ],
+      defaultWorkSchedule: "2/2",
+      scheduleMonthHours: {
+        "2/2": {
+          Січень: 165,
+          Лютий: 154,
+          Березень: 165,
+          Квітень: 165,
+          Травень: 165,
+          Червень: 165,
+          Липень: 165,
+          Серпень: 165,
+          Вересень: 165,
+          Жовтень: 165,
+          Листопад: 165,
+          Грудень: 165
+        },
+        "5/2": {
+          Січень: 176,
+          Лютий: 160,
+          Березень: 176,
+          Квітень: 176,
+          Травень: 168,
+          Червень: 176,
+          Липень: 184,
+          Серпень: 168,
+          Вересень: 176,
+          Жовтень: 176,
+          Листопад: 168,
+          Грудень: 184
+        }
+      },
+      ratingBonusByZone: {
+        1: 35570,
+        2: 33370,
+        3: 31160,
+        4: 28800,
+        5: 26740
+      },
+      levelBonusByLevel: {
+        level1: 0,
+        level2: 2400,
+        level3: 4800
+      },
+      tenureBase: 53400,
+      maxTenureYears: 15,
+      ratingFirstPartRate: 0,
+      defaultInputs: {
+        month: "Червень",
+        workSchedule: "2/2",
+        actualHours: 206,
+        testsHigh: false,
+        ratingZone: 3,
+        level: "level2",
+        salary: 22240,
+        nightHours: 36,
+        holidayHours: 0,
+        doubleHours: 0,
+        wowCases: 0,
+        fines: 420,
+        taxiAmount: 0,
+        tenureYears: 2,
+        tenureHours: 200,
+        firstHalfHours: 82.5,
+        secondHalfHours: 82.5,
+        ratingFirstPart: 0,
+        annualIncome: 0,
+        absenceCalendarDays: 365,
+        vacationDays: 0,
+        sickDays: 0,
+        sickInsuranceRate: 0.7,
+        maternityDays: 0
+      }
     }
   }
 };
@@ -283,7 +369,7 @@ export const ACCESS_CONFIG = {
   supervisor: {
     label: "СВ",
     envKey: "SUPERVISOR_ACCESS_CODE",
-    allowedCalculators: ["supervisor", "service", "level4", "xd", "video"]
+    allowedCalculators: ["supervisor", "service", "level4", "xd", "video", "iron"]
   },
   level4: {
     label: "4 лвл",
@@ -299,6 +385,11 @@ export const ACCESS_CONFIG = {
     label: "Відеоверифікатор",
     envKey: "VIDEO_ACCESS_CODE",
     allowedCalculators: ["video"]
+  },
+  iron: {
+    label: "IRON",
+    envKey: "IRON_ACCESS_CODE",
+    allowedCalculators: ["iron"]
   }
 };
 

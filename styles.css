@@ -56,6 +56,10 @@ body {
     linear-gradient(135deg, #0c1211 0%, var(--bg) 54%, #101b18 100%);
 }
 
+:root[data-theme="dark"] .radio-segmented {
+  background: rgba(16, 24, 23, 0.72);
+}
+
 button,
 input,
 select {
@@ -493,6 +497,53 @@ h2 {
   color: #ffffff;
   border-color: var(--accent);
   background: var(--accent);
+}
+
+.radio-segmented {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.radio-segmented label {
+  position: relative;
+  min-width: 0;
+}
+
+.radio-segmented input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.radio-segmented span {
+  display: grid;
+  min-height: 42px;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 900;
+  transition:
+    color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.radio-segmented label:has(input:checked) span {
+  color: #ffffff;
+  background: var(--accent);
+  box-shadow: 0 10px 20px rgba(22, 106, 77, 0.2);
+}
+
+.radio-segmented input:focus-visible + span {
+  outline: 3px solid rgba(22, 106, 77, 0.25);
+  outline-offset: 2px;
 }
 
 .toggle-field {

@@ -28,6 +28,10 @@
     {
       "source": "/video",
       "destination": "/api/page?path=/video"
+    },
+    {
+      "source": "/iron",
+      "destination": "/api/page?path=/iron"
     }
   ],
   "headers": [
