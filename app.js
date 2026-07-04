@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=27";
+} from "./calculator.js?v=28";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
@@ -267,6 +267,9 @@ function renderModeFields() {
   document.querySelectorAll("[data-feature='bonus']").forEach((field) => {
     field.hidden = !hasBonusInput();
   });
+  document.querySelectorAll("[data-feature='tests']").forEach((field) => {
+    field.hidden = !hasTestsInput();
+  });
   renderBonusInput();
 }
 
@@ -277,7 +280,7 @@ function renderModeLabels() {
   setText("#totalTaxLabel", taxLabel);
   setText("#baseResultLabel", isGrossCalculator() ? "ЗП чистими" : "До виплати ЗП");
   setText("#tenureResultLabel", isGrossCalculator() ? "Стаж чистими" : "Премія стаж");
-  setText("#levelBonusLabel", isGrossCalculator() ? "Доплата рівня за години" : "Доплата рівня");
+  setText("#levelBonusLabel", calculatorType === "video" ? "Доплата рівня за години" : "Доплата рівня");
 }
 
 function renderRatingButtons(activeZone) {
@@ -337,7 +340,7 @@ function readInputs() {
   return {
     month: data.get("month"),
     actualHours: data.get("actualHours"),
-    testsHigh: form.elements.testsHigh.checked,
+    testsHigh: hasTestsInput() && form.elements.testsHigh.checked,
     ratingZone: selectedRatingZone,
     level: data.get("level"),
     salary: defaults.salary,
@@ -812,6 +815,9 @@ function loadInputs(type) {
       saved.ratingZone = defaults.ratingZone;
       saved.level = defaults.level;
     }
+    if (type === "video") {
+      saved.testsHigh = false;
+    }
     if (saved.secondHalfHours === undefined) {
       saved.secondHalfHours = defaults.secondHalfHours;
     }
@@ -856,7 +862,14 @@ function levelLabel(value) {
 
 function getLevelBonusDisplayValue(result) {
   if (!isGrossCalculator()) return result.levelBonus;
-  return result.paymentSchedule?.nextMonthParts?.level ?? 0;
+  if (calculatorType === "video") {
+    return result.paymentSchedule?.nextMonthParts?.level ?? 0;
+  }
+  return result.levelBonus;
+}
+
+function hasTestsInput(type = calculatorType) {
+  return type !== "video";
 }
 
 function setText(selector, value) {
