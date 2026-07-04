@@ -3,14 +3,13 @@ import {
   LEVELS,
   MONTHS,
   calculatePayroll,
+  configurePayrollData,
   formatCurrency,
   getDefaultInputs,
   roundMoney
 } from "./calculator.js";
-import { ACCESS_CONFIG } from "./payroll-data.js";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
-const ACCESS_STORAGE_KEY = "zp-2-2-access-session";
 const form = document.querySelector("#calculatorForm");
 const accessView = document.querySelector("#accessView");
 const accessForm = document.querySelector("#accessForm");
@@ -38,18 +37,16 @@ const reportPanel = document.querySelector("#reportPanel");
 const paymentGrid = document.querySelector("#paymentGrid");
 const absenceGrid = document.querySelector("#absenceGrid");
 const toast = document.querySelector("#toast");
+const MAX_SCENARIOS = 6;
 
-let calculatorType = getRouteType();
-let selectedRatingZone = getDefaultInputs(calculatorType || "service").ratingZone;
+let calculatorType = null;
+let selectedRatingZone = 1;
 let currentResult = null;
-let accessSession = loadAccessSession();
+let accessSession = null;
 
 init();
 
-function init() {
-  renderSelects();
-  renderRoute();
-
+async function init() {
   accessForm.addEventListener("submit", handleAccessSubmit);
   form.addEventListener("input", update);
   form.addEventListener("change", update);
@@ -60,21 +57,42 @@ function init() {
   logoutButton.addEventListener("click", logout);
   addScenarioButton.addEventListener("click", addScenario);
   clearScenariosButton.addEventListener("click", clearScenarios);
+  scenarioList.addEventListener("click", handleScenarioClick);
   homeButton.addEventListener("click", () => {
-    window.location.hash = "";
+    navigateTo("/");
   });
-  window.addEventListener("hashchange", renderRoute);
+  document.addEventListener("click", handleAppLinkClick);
+  window.addEventListener("popstate", renderRoute);
+
+  await hydrateSession();
+  renderRoute();
+}
+
+async function hydrateSession() {
+  try {
+    const response = await fetch("/api/session", { credentials: "same-origin" });
+    const data = await response.json();
+    if (!data.authenticated) return;
+    accessSession = data.session;
+    configurePayrollData(data.payroll);
+    renderSelects();
+  } catch {
+    accessError.textContent = "Сервер авторизації недоступний. Запустіть сайт через Vercel.";
+  }
 }
 
 function renderRoute() {
   if (!accessSession) {
+    if (window.location.pathname !== "/login") {
+      history.replaceState({}, "", "/login");
+    }
     renderAccessGate();
     return;
   }
 
   calculatorType = getRouteType();
   if (calculatorType && !canAccessCalculator(calculatorType)) {
-    window.location.hash = firstAllowedCalculator();
+    navigateTo(`/${firstAllowedCalculator()}`);
     return;
   }
 
@@ -91,7 +109,7 @@ function renderRoute() {
   homeButton.hidden = isHome;
   logoutButton.hidden = false;
   roleBadge.hidden = false;
-  roleBadge.textContent = ACCESS_CONFIG[accessSession.role].label;
+  roleBadge.textContent = accessSession.label;
   renderAllowedChoices();
   renderModeSwitcher();
 
@@ -134,52 +152,55 @@ function renderAccessGate() {
   document.querySelector("#appEyebrow").textContent = "Потрібен код доступу";
 }
 
-function handleAccessSubmit(event) {
+async function handleAccessSubmit(event) {
   event.preventDefault();
   const formData = new FormData(accessForm);
   const role = formData.get("role");
   const code = formData.get("code");
-  const config = ACCESS_CONFIG[role];
+  const submitButton = accessForm.querySelector("button[type='submit']");
 
-  if (!config || config.code !== code) {
-    accessError.textContent = "Невірний код доступу.";
-    return;
-  }
-
-  accessSession = {
-    role,
-    loggedAt: Date.now()
-  };
-  localStorage.setItem(ACCESS_STORAGE_KEY, JSON.stringify(accessSession));
+  submitButton.disabled = true;
   accessError.textContent = "";
-  accessForm.reset();
 
-  window.location.hash = role === "supervisor" ? "supervisor" : firstAllowedCalculator();
-  renderRoute();
-}
-
-function logout() {
-  accessSession = null;
-  localStorage.removeItem(ACCESS_STORAGE_KEY);
-  window.location.hash = "";
-  renderRoute();
-}
-
-function loadAccessSession() {
   try {
-    const session = JSON.parse(localStorage.getItem(ACCESS_STORAGE_KEY));
-    return ACCESS_CONFIG[session?.role] ? session : null;
+    const response = await fetch("/api/login", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, code })
+    });
+    const data = await response.json();
+
+    if (!response.ok || !data.authenticated) {
+      accessError.textContent = data.error || "Невірний код доступу.";
+      return;
+    }
+
+    accessSession = data.session;
+    configurePayrollData(data.payroll);
+    renderSelects();
+    accessForm.reset();
+    navigateTo(`/${firstAllowedCalculator()}`);
   } catch {
-    return null;
+    accessError.textContent = "Не вдалося увійти. Перевірте Vercel API або інтернет.";
+  } finally {
+    submitButton.disabled = false;
   }
+}
+
+async function logout() {
+  accessSession = null;
+  await fetch("/api/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
+  navigateTo("/login");
+  renderRoute();
 }
 
 function canAccessCalculator(type) {
-  return ACCESS_CONFIG[accessSession?.role]?.allowedCalculators.includes(type);
+  return accessSession?.allowedCalculators.includes(type);
 }
 
 function firstAllowedCalculator() {
-  return ACCESS_CONFIG[accessSession?.role]?.allowedCalculators[0] ?? "service";
+  return accessSession?.allowedCalculators[0] ?? "service";
 }
 
 function renderAllowedChoices() {
@@ -198,11 +219,14 @@ function renderModeSwitcher() {
 }
 
 function getRouteType() {
+  const pathRoute = window.location.pathname.replace("/", "");
+  if (CALCULATORS[pathRoute]) return pathRoute;
   const route = window.location.hash.replace("#", "");
-  return route === "service" || route === "supervisor" ? route : null;
+  return CALCULATORS[route] ? route : null;
 }
 
 function renderSelects() {
+  if (!MONTHS.length || !LEVELS.length) return;
   monthSelect.innerHTML = MONTHS.map(
     (month) => `<option value="${month.name}">${month.name}</option>`
   ).join("");
@@ -219,11 +243,12 @@ function renderModeFields() {
 }
 
 function renderModeLabels() {
+  const taxLabel = `Податок ${formatPercent(CALCULATORS[calculatorType].taxRate)}`;
   setText("#totalMainLabel", "Загальна сума до виплати");
   setText("#totalGrossLabel", "Сума з податком");
-  setText("#totalTaxLabel", calculatorType === "supervisor" ? "Податки 23%" : "Податок 23%");
-  setText("#baseResultLabel", calculatorType === "supervisor" ? "ЗП чистими" : "До виплати ЗП");
-  setText("#tenureResultLabel", calculatorType === "supervisor" ? "Стаж чистими" : "Премія стаж");
+  setText("#totalTaxLabel", taxLabel);
+  setText("#baseResultLabel", isGrossCalculator() ? "ЗП чистими" : "До виплати ЗП");
+  setText("#tenureResultLabel", isGrossCalculator() ? "Стаж чистими" : "Премія стаж");
 }
 
 function renderRatingButtons(activeZone) {
@@ -290,7 +315,7 @@ function readInputs() {
     nightHours: data.get("nightHours"),
     holidayHours: data.get("holidayHours"),
     doubleHours: data.get("doubleHours"),
-    wowCases: calculatorType === "supervisor" ? data.get("wowCases") : 0,
+    wowCases: hasWowBonus() ? data.get("wowCases") : 0,
     fines: data.get("fines"),
     taxiAmount: data.get("taxiAmount"),
     tenureYears: data.get("tenureYears"),
@@ -317,7 +342,7 @@ function renderResult(result) {
   setText("#ratingBonus", formatCurrency(result.ratingBonus));
   setText("#levelBonus", formatCurrency(result.levelBonus));
 
-  const rows = calculatorType === "supervisor" ? supervisorRows(result) : serviceRows(result);
+  const rows = isGrossCalculator() ? grossRows(result) : serviceRows(result);
 
   document.querySelector("#breakdown").innerHTML = rows
     .map(
@@ -362,8 +387,12 @@ function buildValidationMessages(result) {
     messages.push({ tone: "warning", text: "Святкових годин більше, ніж фактичних. Варто перевірити значення." });
   }
 
-  if (calculatorType === "supervisor" && input.wowCases > 0) {
+  if (hasWowBonus() && input.wowCases > 0) {
     messages.push({ tone: "success", text: `WOW-кейси додали ${formatCurrency(result.wowBonus)} до чистої ЗП.` });
+  }
+
+  if (result.ratingBonus === 0) {
+    messages.push({ tone: "warning", text: "Для цієї зони рейтингова ставка у джерелі дорівнює 0. Перевірте, чи правильна зона." });
   }
 
   return messages;
@@ -407,11 +436,12 @@ function formulaRows(result) {
     }
   ];
 
-  if (calculatorType === "supervisor") {
+  if (isGrossCalculator()) {
+    const wowText = hasWowBonus() ? ` + WOW ${formatCurrency(result.wowBonus)}` : "";
     rows.push(
       {
         label: "ЗП чистими",
-        formula: `${formatCurrency(result.baseGross)} - ${formatCurrency(result.baseTax)} + WOW ${formatCurrency(result.wowBonus)} = ${formatCurrency(result.basePay)}`
+        formula: `${formatCurrency(result.baseGross)} - ${formatCurrency(result.baseTax)}${wowText} = ${formatCurrency(result.basePay)}`
       },
       {
         label: "Стаж чистими",
@@ -426,7 +456,7 @@ function formulaRows(result) {
       },
       {
         label: "Премія стаж",
-        formula: `29991 * ${Math.round(result.tenureRate * 100)}% / ${result.normHours} * ${roundMoney(i.actualHours)} = ${formatCurrency(result.tenurePay)}`
+        formula: `база стажу * ${Math.round(result.tenureRate * 100)}% / ${result.normHours} * ${roundMoney(i.actualHours)} = ${formatCurrency(result.tenurePay)}`
       }
     );
   }
@@ -452,7 +482,7 @@ function renderPaymentSchedule(result) {
       parts: [
         ["Оклад за години до 15-го", schedule.midMonthParts.base],
         ["1 частина рейтингу", schedule.midMonthParts.rating],
-        ...(calculatorType === "supervisor" ? [["WOW-кейси", schedule.midMonthParts.wow]] : [])
+        ...(hasWowBonus() ? [["WOW-кейси", schedule.midMonthParts.wow]] : [])
       ]
     },
     {
@@ -571,23 +601,24 @@ function serviceRows(result) {
     ["Монобрат / таксі", result.taxiCompensation],
     [`Премія стаж ${Math.round(result.tenureRate * 100)}%`, result.tenurePay],
     ["Загальна сума до виплати", result.totalPay],
-    ["Податок 23%", result.tax],
+    [`Податок ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.tax],
     ["Сума з податком", result.totalGross]
   ];
 }
 
-function supervisorRows(result) {
-  return [
+function grossRows(result) {
+  const rows = [
     ["Сума ЗП з податком", result.baseGross],
-    ["Податок ЗП 23%", result.baseTax],
+    [`Податок ЗП ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.baseTax],
     ["До виплати ЗП", result.basePay],
-    ["WOW-кейси", result.wowBonus],
+    ...(hasWowBonus() ? [["WOW-кейси", result.wowBonus]] : []),
     [`Стаж з податком ${Math.round(result.tenureRate * 100)}%`, result.tenureGross],
-    ["Податок стаж 23%", result.tenureTax],
+    [`Податок стаж ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.tenureTax],
     ["Стаж чистими", result.tenurePay],
     ["Загальна сума до виплати", result.totalPay],
     ["Сума з податком", result.totalGross]
   ];
+  return rows;
 }
 
 async function copySummary() {
@@ -612,6 +643,10 @@ function printReport() {
 function addScenario() {
   if (!calculatorType || !currentResult) return;
   const scenarios = loadScenarios(calculatorType);
+  if (scenarios.length >= MAX_SCENARIOS) {
+    const shouldReplace = window.confirm(`Можна зберегти максимум ${MAX_SCENARIOS} сценаріїв. Видалити найстаріший і додати новий?`);
+    if (!shouldReplace) return;
+  }
   const next = {
     id: Date.now(),
     name: `Сценарій ${scenarios.length + 1}`,
@@ -624,9 +659,9 @@ function addScenario() {
   };
 
   scenarios.push(next);
-  saveScenarios(calculatorType, scenarios);
+  saveScenarios(calculatorType, scenarios.slice(-MAX_SCENARIOS));
   renderScenarios();
-  showStatus("Сценарій додано");
+  showStatus(scenarios.length > MAX_SCENARIOS ? "Найстаріший сценарій замінено" : "Сценарій додано");
 }
 
 function clearScenarios() {
@@ -659,7 +694,10 @@ function renderScenarios() {
             <strong>${formatCurrency(scenario.totalPay)}</strong>
             <small>${scenario.inputs.month}, зона ${scenario.inputs.ratingZone}, ${roundMoney(scenario.inputs.actualHours)} год</small>
           </div>
-          <div class="scenario-delta ${deltaClass}">${deltaLabel}</div>
+          <div class="scenario-controls">
+            <div class="scenario-delta ${deltaClass}">${deltaLabel}</div>
+            <button class="icon-button" type="button" data-delete-scenario="${scenario.id}" aria-label="Видалити сценарій">×</button>
+          </div>
         </article>
       `;
     })
@@ -688,7 +726,7 @@ function buildTextReport(result, config) {
 
 function reset() {
   if (!calculatorType) return;
-  const defaults = getDefaultInputs(calculatorType);
+  const defaults = getRuntimeDefaults(calculatorType);
   selectedRatingZone = defaults.ratingZone;
   fillForm(defaults);
   renderRatingButtons(selectedRatingZone);
@@ -712,7 +750,7 @@ function showStatus(message) {
 
 function loadInputs(type) {
   try {
-    const defaults = getDefaultInputs(type);
+    const defaults = getRuntimeDefaults(type);
     const saved = JSON.parse(localStorage.getItem(storageKey(type))) ?? {};
     if (type === "supervisor" && Number(saved.firstHalfHours) === 82.5) {
       saved.firstHalfHours = defaults.firstHalfHours;
@@ -727,7 +765,7 @@ function loadInputs(type) {
       ratingFirstPart: defaults.ratingFirstPart
     };
   } catch {
-    return getDefaultInputs(type);
+    return getRuntimeDefaults(type);
   }
 }
 
@@ -752,7 +790,7 @@ function loadScenarios(type) {
 }
 
 function saveScenarios(type, scenarios) {
-  localStorage.setItem(scenarioStorageKey(type), JSON.stringify(scenarios.slice(-6)));
+  localStorage.setItem(scenarioStorageKey(type), JSON.stringify(scenarios.slice(-MAX_SCENARIOS)));
 }
 
 function levelLabel(value) {
@@ -761,4 +799,45 @@ function levelLabel(value) {
 
 function setText(selector, value) {
   document.querySelector(selector).textContent = value;
+}
+
+function handleAppLinkClick(event) {
+  const link = event.target.closest("a[href^='/']");
+  if (!link || link.target || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  navigateTo(link.getAttribute("href"));
+}
+
+function navigateTo(path) {
+  history.pushState({}, "", path);
+  renderRoute();
+}
+
+function handleScenarioClick(event) {
+  const button = event.target.closest("[data-delete-scenario]");
+  if (!button || !calculatorType) return;
+  const id = Number(button.dataset.deleteScenario);
+  const scenarios = loadScenarios(calculatorType).filter((scenario) => scenario.id !== id);
+  saveScenarios(calculatorType, scenarios);
+  renderScenarios();
+  showStatus("Сценарій видалено");
+}
+
+function getRuntimeDefaults(type) {
+  return {
+    ...getDefaultInputs(type),
+    month: MONTHS[new Date().getMonth()]?.name ?? getDefaultInputs(type).month
+  };
+}
+
+function isGrossCalculator(type = calculatorType) {
+  return CALCULATORS[type]?.taxMode === "gross";
+}
+
+function hasWowBonus(type = calculatorType) {
+  return Boolean(CALCULATORS[type]?.hasWow);
+}
+
+function formatPercent(value) {
+  return `${roundMoney((value ?? 0) * 100)}%`;
 }

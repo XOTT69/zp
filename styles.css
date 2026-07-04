@@ -67,6 +67,7 @@ button {
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 h1,
@@ -131,12 +132,12 @@ h2 {
   padding: 0 12px;
   color: var(--accent-strong);
   background: var(--accent-soft);
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .mode-switcher {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin: 0 0 12px;
 }
@@ -169,7 +170,7 @@ h2 {
   color: inherit;
   opacity: 0.72;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 800;
   text-transform: uppercase;
 }
 
@@ -212,7 +213,7 @@ h2 {
 .access-form label {
   display: grid;
   gap: 8px;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .access-form input,
@@ -229,7 +230,7 @@ h2 {
   min-height: 22px;
   margin: 0;
   color: var(--danger) !important;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .summary-strip {
@@ -305,7 +306,7 @@ h2 {
   padding: 6px 10px;
   color: var(--accent-strong);
   background: var(--accent-soft);
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .choice-card strong {
@@ -391,7 +392,7 @@ h2 {
 
 .input-drawer summary {
   padding: 12px 14px;
-  font-weight: 850;
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -415,7 +416,7 @@ h2 {
 .toggle-field span {
   color: #344054;
   font-size: 0.9rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .field input,
@@ -461,7 +462,7 @@ h2 {
   border-radius: 8px;
   background: #ffffff;
   color: var(--muted);
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .segment.is-active {
@@ -599,7 +600,7 @@ h2 {
   min-height: 22px;
   margin: 14px 0 0;
   color: var(--accent);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .notice-list {
@@ -645,7 +646,7 @@ h2 {
 .formula-panel summary {
   padding: 12px 14px;
   color: var(--ink);
-  font-weight: 850;
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -683,7 +684,7 @@ h2 {
 .report-header span {
   color: var(--accent);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 800;
   text-transform: uppercase;
 }
 
@@ -737,7 +738,7 @@ h2 {
 .payment-card span {
   color: var(--accent);
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 800;
   text-transform: uppercase;
 }
 
@@ -857,7 +858,7 @@ h2 {
   flex: 0 0 auto;
   border-radius: 999px;
   padding: 6px 10px;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .scenario-delta.positive {
@@ -868,6 +869,33 @@ h2 {
 .scenario-delta.negative {
   color: var(--danger);
   background: #fde8e8;
+}
+
+.scenario-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.icon-button {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--panel);
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.icon-button:hover {
+  color: var(--danger);
+  border-color: rgba(159, 45, 45, 0.34);
+  background: #fff4f4;
 }
 
 .toast {
@@ -882,7 +910,7 @@ h2 {
   color: #ffffff;
   background: var(--accent-strong);
   box-shadow: 0 18px 48px rgba(25, 42, 39, 0.2);
-  font-weight: 850;
+  font-weight: 800;
   opacity: 0;
   transform: translateY(10px);
   transition:
@@ -914,6 +942,10 @@ h2 {
 
   .top-actions {
     justify-content: flex-start;
+  }
+
+  .mode-switcher {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .summary-strip {
@@ -967,6 +999,103 @@ h2 {
     align-items: flex-start;
     flex-direction: column;
     gap: 6px;
+  }
+
+  .scenario-controls {
+    justify-content: space-between;
+    width: 100%;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101817;
+    --panel: #182220;
+    --panel-soft: #20332d;
+    --ink: #edf7f3;
+    --muted: #9db0aa;
+    --line: rgba(230, 246, 240, 0.14);
+    --accent: #35c08f;
+    --accent-strong: #86f0c2;
+    --accent-soft: rgba(53, 192, 143, 0.16);
+    --blue: #78aef2;
+    --amber: #f2b15d;
+    --danger: #ff9f9f;
+    --glass: rgba(24, 34, 32, 0.78);
+    --shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 10% 6%, rgba(53, 192, 143, 0.13), transparent 30rem),
+      radial-gradient(circle at 88% 12%, rgba(120, 174, 242, 0.11), transparent 32rem),
+      linear-gradient(135deg, #0c1211 0%, var(--bg) 54%, #101b18 100%);
+  }
+
+  .access-form input,
+  .access-form select,
+  .summary-strip > div,
+  .field input,
+  .field select,
+  .segment,
+  .toggle-field,
+  .breakdown-row,
+  .report-panel,
+  .absence-row,
+  .scenario-item {
+    color: var(--ink);
+    background: var(--panel);
+  }
+
+  .input-drawer,
+  .formula-panel,
+  .result-grid article,
+  .payment-card {
+    background: rgba(24, 34, 32, 0.82);
+  }
+
+  .field span,
+  .field legend,
+  .toggle-field span {
+    color: #d6e5df;
+  }
+
+  .field input[readonly] {
+    color: #c7d8d2;
+    background: #23302d;
+  }
+
+  .summary-main {
+    background: linear-gradient(135deg, rgba(24, 34, 32, 0.96), var(--accent-soft)) !important;
+  }
+
+  .notice.info {
+    color: #b9ddff;
+    background: rgba(29, 99, 183, 0.18);
+  }
+
+  .notice.warning {
+    color: #ffd99a;
+    background: rgba(185, 112, 12, 0.18);
+  }
+
+  .notice.success {
+    color: #b6f4d0;
+    background: rgba(53, 192, 143, 0.16);
+  }
+
+  .scenario-delta.positive {
+    color: #a7f3d0;
+    background: rgba(53, 192, 143, 0.16);
+  }
+
+  .scenario-delta.negative {
+    color: #fecaca;
+    background: rgba(159, 45, 45, 0.2);
+  }
+
+  .icon-button:hover {
+    background: rgba(159, 45, 45, 0.18);
   }
 }
 

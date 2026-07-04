@@ -8,7 +8,11 @@
       name="description"
       content="Калькулятор зарплати для графіка 2/2 за ставками з 01.03.2026"
     />
-    <link rel="stylesheet" href="./styles.css?v=15" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <link rel="stylesheet" href="./styles.css?v=18" />
   </head>
   <body>
     <div class="shell">
@@ -28,13 +32,21 @@
       </header>
 
       <nav class="mode-switcher" id="modeSwitcher" aria-label="Перемикання розрахунків" hidden>
-        <a href="#service" data-calculator-choice="service" data-mode-link="service">
+        <a href="/service" data-calculator-choice="service" data-mode-link="service">
           <span>Оператори</span>
           <strong>ЗП сервісу</strong>
         </a>
-        <a href="#supervisor" data-calculator-choice="supervisor" data-mode-link="supervisor">
+        <a href="/supervisor" data-calculator-choice="supervisor" data-mode-link="supervisor">
           <span>СВ</span>
           <strong>ЗП СВ</strong>
+        </a>
+        <a href="/level4" data-calculator-choice="level4" data-mode-link="level4">
+          <span>4 лвл</span>
+          <strong>ЗП 4 лвл</strong>
+        </a>
+        <a href="/xd" data-calculator-choice="xd" data-mode-link="xd">
+          <span>ХД</span>
+          <strong>ЗП ХД</strong>
         </a>
       </nav>
 
@@ -49,6 +61,8 @@
               <select name="role" id="accessRole">
                 <option value="operator">Оператор</option>
                 <option value="supervisor">СВ</option>
+                <option value="level4">4 лвл</option>
+                <option value="xd">ХД</option>
               </select>
             </label>
             <label>
@@ -67,15 +81,25 @@
           <h2 id="homeTitle">Яку зарплату рахуємо?</h2>
         </div>
         <div class="choice-grid">
-          <a class="choice-card" href="#service" data-calculator-choice="service">
+          <a class="choice-card" href="/service" data-calculator-choice="service">
             <span>Оператор сервісу</span>
             <strong>ЗП сервісу 2/2</strong>
             <small>Рейтинг, рівень, нічні, X2, стаж</small>
           </a>
-          <a class="choice-card" href="#supervisor" data-calculator-choice="supervisor">
+          <a class="choice-card" href="/supervisor" data-calculator-choice="supervisor">
             <span>СВ</span>
             <strong>ЗП СВ 2/2</strong>
             <small>+15%, WOW-кейси, податки, стаж</small>
+          </a>
+          <a class="choice-card" href="/level4" data-calculator-choice="level4">
+            <span>4 лвл</span>
+            <strong>ЗП 4 лвл 2/2</strong>
+            <small>Окремі ставки рейтингу, рівня, податки, стаж</small>
+          </a>
+          <a class="choice-card" href="/xd" data-calculator-choice="xd">
+            <span>ХД</span>
+            <strong>ЗП ХД 2/2</strong>
+            <small>19,5% податку, рейтинг, рівень, стаж</small>
           </a>
         </div>
       </section>
@@ -332,6 +356,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <script type="module" src="./app.js?v=15"></script>
+    <script type="module" src="./app.js?v=18"></script>
   </body>
 </html>
