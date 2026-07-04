@@ -158,9 +158,10 @@ export const PAYROLL_CONFIG = {
         sickInsuranceRate: 0.7,
         maternityDays: 0
       },
-      levelBonusRules: {
-        level2: { maxZoneExclusive: 3, amount: 3617 },
-        level3: { underZone3: 7234, zone3: 0 }
+      levelBonusByLevelAndZone: {
+        level1: { default: 0 },
+        level2: { 1: 3617, 2: 3617, default: 0 },
+        level3: { 1: 7234, 2: 3617, default: 0 }
       }
     },
     xd: {
