@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js";
+} from "./calculator.js?v=27";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
@@ -277,7 +277,7 @@ function renderModeLabels() {
   setText("#totalTaxLabel", taxLabel);
   setText("#baseResultLabel", isGrossCalculator() ? "ЗП чистими" : "До виплати ЗП");
   setText("#tenureResultLabel", isGrossCalculator() ? "Стаж чистими" : "Премія стаж");
-  setText("#levelBonusLabel", isGrossCalculator() ? "Доплата рівня чистими" : "Доплата рівня");
+  setText("#levelBonusLabel", isGrossCalculator() ? "Доплата рівня за години" : "Доплата рівня");
 }
 
 function renderRatingButtons(activeZone) {
@@ -808,6 +808,10 @@ function loadInputs(type) {
     if (type === "supervisor" && Number(saved.firstHalfHours) === 82.5) {
       saved.firstHalfHours = defaults.firstHalfHours;
     }
+    if (type === "video" && Number(saved.ratingZone) === 5 && saved.level === "level3") {
+      saved.ratingZone = defaults.ratingZone;
+      saved.level = defaults.level;
+    }
     if (saved.secondHalfHours === undefined) {
       saved.secondHalfHours = defaults.secondHalfHours;
     }
@@ -852,7 +856,7 @@ function levelLabel(value) {
 
 function getLevelBonusDisplayValue(result) {
   if (!isGrossCalculator()) return result.levelBonus;
-  return result.levelBonus * (1 - CALCULATORS[calculatorType].taxRate);
+  return result.paymentSchedule?.nextMonthParts?.level ?? 0;
 }
 
 function setText(selector, value) {

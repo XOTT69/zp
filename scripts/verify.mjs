@@ -252,6 +252,8 @@ const checks = [
   ["video.payment15", videoResult.paymentSchedule.midMonthPay, 17025.16],
   ["video.payment31", videoResult.paymentSchedule.monthEndPay, 13285.68],
   ["video.payment07", videoResult.paymentSchedule.nextMonthRatingPay, 6599.88],
+  ["video.default.ratingZone", PAYROLL_CONFIG.calculators.video.defaultInputs.ratingZone, 3],
+  ["video.default.level2CleanBonus", PAYROLL_CONFIG.calculators.video.levelBonusByLevelAndZone.level2[3] * 0.77, 2700],
   ["video.maxTenure.inputYears", videoMaxTenureResult.input.tenureYears, 15],
   ["video.maxTenure.tenurePay", videoMaxTenureResult.tenurePay, 29840.00096],
   ["video.maxTenure.totalPay", videoMaxTenureResult.totalPay, 66750.72096],

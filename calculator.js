@@ -16,7 +16,7 @@ let PAYROLL_CONFIG = {
 export function configurePayrollData(payload) {
   MONTHS = payload.months ?? [];
   LEVELS = payload.levels ?? [];
-  PAYROLL_CONFIG = payload.config ?? PAYROLL_CONFIG;
+  PAYROLL_CONFIG = applyRuntimeConfigOverrides(payload.config ?? PAYROLL_CONFIG);
   CALCULATORS = Object.fromEntries(
     Object.entries(PAYROLL_CONFIG.calculators).map(([key, config]) => [
       key,
@@ -40,6 +40,38 @@ export function configurePayrollData(payload) {
     ])
   );
   DEFAULT_INPUTS = DEFAULT_INPUTS_BY_TYPE.service ?? Object.values(DEFAULT_INPUTS_BY_TYPE)[0] ?? {};
+}
+
+function applyRuntimeConfigOverrides(config) {
+  const calculators = { ...(config.calculators ?? {}) };
+
+  if (calculators.video) {
+    calculators.video = {
+      ...calculators.video,
+      levelBonusByLevelAndZone: {
+        level1: { default: 0 },
+        level2: {
+          1: 2700 / 0.77,
+          2: 2700 / 0.77,
+          3: 2700 / 0.77,
+          4: 0,
+          5: 0
+        },
+        level3: {
+          1: 5500 / 0.77,
+          2: 5500 / 0.77,
+          3: 2700 / 0.77,
+          4: 0,
+          5: 0
+        }
+      }
+    };
+  }
+
+  return {
+    ...config,
+    calculators
+  };
 }
 
 /**
