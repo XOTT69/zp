@@ -277,6 +277,7 @@ function renderModeLabels() {
   setText("#totalTaxLabel", taxLabel);
   setText("#baseResultLabel", isGrossCalculator() ? "ЗП чистими" : "До виплати ЗП");
   setText("#tenureResultLabel", isGrossCalculator() ? "Стаж чистими" : "Премія стаж");
+  setText("#levelBonusLabel", isGrossCalculator() ? "Доплата рівня чистими" : "Доплата рівня");
 }
 
 function renderRatingButtons(activeZone) {
@@ -368,7 +369,7 @@ function renderResult(result) {
   setText("#baseNet", formatCurrency(result.basePay));
   setText("#tenureNet", formatCurrency(result.tenurePay));
   setText("#ratingBonus", formatCurrency(result.ratingBonus));
-  setText("#levelBonus", formatCurrency(result.levelBonus));
+  setText("#levelBonus", formatCurrency(getLevelBonusDisplayValue(result)));
 
   const rows = isGrossCalculator() ? grossRows(result) : serviceRows(result);
 
@@ -421,6 +422,13 @@ function buildValidationMessages(result) {
 
   if (result.ratingBonus === 0) {
     messages.push({ tone: "warning", text: "Для цієї зони рейтингова ставка у джерелі дорівнює 0. Перевірте, чи правильна зона." });
+  }
+
+  if (calculatorType === "video" && result.levelBonus === 0 && input.level !== "level1") {
+    const hint = input.level === "level2"
+      ? "2 рівень дає +2700 тільки в зонах 1, 2, 3."
+      : "3 рівень дає +5500 у зонах 1, 2; +2700 у зоні 3; у зонах 4-5 доплати немає.";
+    messages.push({ tone: "info", text: `Доплата рівня зараз 0, бо зона ${input.ratingZone} не проходить під правило. ${hint}` });
   }
 
   return messages;
@@ -840,6 +848,11 @@ function saveScenarios(type, scenarios) {
 
 function levelLabel(value) {
   return LEVELS.find((level) => level.value === value)?.label ?? value;
+}
+
+function getLevelBonusDisplayValue(result) {
+  if (!isGrossCalculator()) return result.levelBonus;
+  return result.levelBonus * (1 - CALCULATORS[calculatorType].taxRate);
 }
 
 function setText(selector, value) {
