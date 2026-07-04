@@ -21,7 +21,10 @@ export default async function handler(req, res) {
     const cookie = await createSessionCookie(role);
 
     jsonResponse(res, 200, { authenticated: true, session, payroll }, { "Set-Cookie": cookie });
-  } catch {
-    jsonResponse(res, 400, { error: "Не вдалося обробити запит." });
+  } catch (error) {
+    const message = error?.message === "AUTH_SECRET is required"
+      ? "На Vercel не задано AUTH_SECRET."
+      : "Не вдалося обробити запит.";
+    jsonResponse(res, 400, { error: message });
   }
 }

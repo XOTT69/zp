@@ -2,24 +2,28 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/",
+      "destination": "/api/page?path=/"
+    },
+    {
       "source": "/login",
-      "destination": "/index.html"
+      "destination": "/api/page?path=/login"
     },
     {
       "source": "/service",
-      "destination": "/index.html"
+      "destination": "/api/page?path=/service"
     },
     {
       "source": "/supervisor",
-      "destination": "/index.html"
+      "destination": "/api/page?path=/supervisor"
     },
     {
       "source": "/level4",
-      "destination": "/index.html"
+      "destination": "/api/page?path=/level4"
     },
     {
       "source": "/xd",
-      "destination": "/index.html"
+      "destination": "/api/page?path=/xd"
     }
   ],
   "headers": [
