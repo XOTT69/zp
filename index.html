@@ -12,8 +12,8 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
-    <script src="./theme.js?v=20"></script>
-    <link rel="stylesheet" href="./styles.css?v=19" />
+    <script src="./theme.js?v=22"></script>
+    <link rel="stylesheet" href="./styles.css?v=22" />
   </head>
   <body>
     <div class="shell">
@@ -50,6 +50,10 @@
           <span>ХД</span>
           <strong>ЗП ХД</strong>
         </a>
+        <a href="/vk" data-calculator-choice="vk" data-mode-link="vk">
+          <span>ВК</span>
+          <strong>ЗП ВК</strong>
+        </a>
         <a href="/video" data-calculator-choice="video" data-mode-link="video">
           <span>Відео</span>
           <strong>ЗП відео</strong>
@@ -69,6 +73,7 @@
                 <option value="supervisor">СВ</option>
                 <option value="level4">4 лвл</option>
                 <option value="xd">ХД</option>
+                <option value="vk">ВК</option>
                 <option value="video">Відеоверифікатор</option>
               </select>
             </label>
@@ -107,6 +112,11 @@
             <span>ХД</span>
             <strong>ЗП ХД 2/2</strong>
             <small>19,5% податку, рейтинг, рівень, стаж</small>
+          </a>
+          <a class="choice-card" href="/vk" data-calculator-choice="vk">
+            <span>ВК</span>
+            <strong>ЗП ВК 2/2</strong>
+            <small>30 360 оклад, 23% податку, рейтинг, кваліф, стаж</small>
           </a>
           <a class="choice-card" href="/video" data-calculator-choice="video">
             <span>Відеоверифікатор</span>
@@ -223,7 +233,7 @@
 
                 <label class="field">
                   <span>Стаж, років</span>
-                  <input name="tenureYears" type="number" min="0" step="1" inputmode="numeric" />
+                  <input name="tenureYears" type="number" min="0" max="15" step="1" inputmode="numeric" />
                 </label>
               </div>
             </details>
@@ -368,6 +378,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <script type="module" src="./app.js?v=19"></script>
+    <script type="module" src="./app.js?v=22"></script>
   </body>
 </html>

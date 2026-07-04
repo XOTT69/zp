@@ -70,6 +70,42 @@ const xdResult = calculatePayroll({
   tenureYears: 4
 }, "xd");
 
+const vkResult = calculatePayroll({
+  month: "Липень",
+  actualHours: 176,
+  testsHigh: false,
+  ratingZone: 5,
+  level: "level3",
+  salary: 30360,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 6,
+  firstHalfHours: 79,
+  secondHalfHours: 86
+}, "vk");
+
+const vkMaxTenureResult = calculatePayroll({
+  month: "Липень",
+  actualHours: 176,
+  testsHigh: false,
+  ratingZone: 5,
+  level: "level3",
+  salary: 30360,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 20,
+  firstHalfHours: 79,
+  secondHalfHours: 86
+}, "vk");
+
 const videoResult = calculatePayroll({
   month: "Липень",
   actualHours: 165,
@@ -124,7 +160,14 @@ const videoLevel3GreenResult = calculatePayroll({
   secondHalfHours: 82.5
 }, "video");
 
+const monthNormChecks = MONTHS.map((month) => [
+  `month.${month.name}.hours`,
+  month.hours,
+  month.name === "Лютий" ? 154 : 165
+]);
+
 const checks = [
+  ...monthNormChecks,
   ["service.normHours", serviceResult.normHours, 165],
   ["service.effectiveHours", serviceResult.effectiveHours, 188],
   ["service.ratingBonus", serviceResult.ratingBonus, 23062],
@@ -162,6 +205,20 @@ const checks = [
   ["xd.basePay", xdResult.basePay, 31928.388121],
   ["xd.tenurePay", xdResult.tenurePay, 6556],
   ["xd.totalPay", xdResult.totalPay, 38484.388121],
+  ["vk.normHours", vkResult.normHours, 165],
+  ["vk.ratingBonus", vkResult.ratingBonus, 14580],
+  ["vk.levelBonus", vkResult.levelBonus, 7142.9],
+  ["vk.baseGross", vkResult.baseGross, 55555.093333],
+  ["vk.basePay", vkResult.basePay, 42777.421867],
+  ["vk.tenureGross", vkResult.tenureGross, 15501.2992],
+  ["vk.tenurePay", vkResult.tenurePay, 11936.000384],
+  ["vk.totalPay", vkResult.totalPay, 54713.422251],
+  ["vk.payment15", vkResult.paymentSchedule.midMonthPay, 17025.16],
+  ["vk.payment31", vkResult.paymentSchedule.monthEndPay, 13285.68],
+  ["vk.payment07", vkResult.paymentSchedule.nextMonthRatingPay, 12466.581867],
+  ["vk.maxTenure.inputYears", vkMaxTenureResult.input.tenureYears, 15],
+  ["vk.maxTenure.tenurePay", vkMaxTenureResult.tenurePay, 29840.00096],
+  ["vk.maxTenure.totalPay", vkMaxTenureResult.totalPay, 72617.422827],
   ["video.normHours", videoResult.normHours, 165],
   ["video.ratingBonus", videoResult.ratingBonus, 14000],
   ["video.levelBonus", videoResult.levelBonus, 0],

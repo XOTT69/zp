@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { readSessionFromCookie } from "./_auth.js";
 import { getSessionForRole } from "./_payroll-data.js";
 
-const APP_PATHS = new Set(["/", "/login", "/service", "/supervisor", "/level4", "/xd", "/video"]);
-const CALCULATOR_PATHS = new Set(["/service", "/supervisor", "/level4", "/xd", "/video"]);
+const APP_PATHS = new Set(["/", "/login", "/service", "/supervisor", "/level4", "/xd", "/vk", "/video"]);
+const CALCULATOR_PATHS = new Set(["/service", "/supervisor", "/level4", "/xd", "/vk", "/video"]);
 const ROOT_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 
 export default async function handler(req, res) {

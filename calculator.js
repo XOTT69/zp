@@ -9,6 +9,7 @@ let PAYROLL_CONFIG = {
   taxiDivisor: 80.5,
   maxRatingZone: 5,
   maxWowCases: 5,
+  maxTenureYears: 15,
   calculators: {}
 };
 
@@ -333,7 +334,8 @@ function normalizeInputs(input, calculatorType) {
       ? ratingBonus * config.ratingFirstPartRate * ratingTaxMultiplier
       : toNumber(defaults.ratingFirstPart)
   );
-  const tenureYears = Math.max(0, Math.floor(toNumber(input.tenureYears)));
+  const maxTenureYears = config.maxTenureYears ?? PAYROLL_CONFIG.maxTenureYears ?? 15;
+  const tenureYears = Math.min(maxTenureYears, Math.max(0, Math.floor(toNumber(input.tenureYears))));
 
   return {
     month: input.month || defaults.month,
@@ -348,7 +350,7 @@ function normalizeInputs(input, calculatorType) {
     wowCases: normalizeBonusInput(input.wowCases, config),
     fines: toNumber(input.fines),
     taxiAmount: toNumber(input.taxiAmount),
-    tenureYears: config.maxTenureYears ? Math.min(config.maxTenureYears, tenureYears) : tenureYears,
+    tenureYears,
     firstHalfHours: Math.max(0, toNumber(valueOrDefault(input.firstHalfHours, defaults.firstHalfHours))),
     secondHalfHours: Math.max(0, toNumber(valueOrDefault(input.secondHalfHours, defaults.secondHalfHours))),
     ratingFirstPart,
@@ -369,6 +371,10 @@ function normalizeInputs(input, calculatorType) {
  * @returns {object} Estimated 15th, month-end, next-month and tenure payouts.
  */
 function calculatePaymentSchedule(values, parts) {
+  if (parts.paymentScheduleMode === "firstHalfRatingGross") {
+    return calculateFirstHalfRatingGrossPaymentSchedule(values, parts);
+  }
+
   if (parts.paymentScheduleMode === "videoVerifier") {
     return calculateVideoVerifierPaymentSchedule(values, parts);
   }
@@ -423,6 +429,55 @@ function calculatePaymentSchedule(values, parts) {
       level: levelPay,
       extras,
       settlement: fixedSettlement
+    }
+  };
+}
+
+function calculateFirstHalfRatingGrossPaymentSchedule(values, parts) {
+  const taxMultiplier = parts.isGrossMode ? 1 - parts.taxRate : 1;
+  const firstHalfHours = Math.min(values.firstHalfHours, parts.effectiveHours);
+  const fixedWorked = (values.salary / parts.normHours) * parts.effectiveHours * taxMultiplier;
+  const fixedAdvance = Math.min(fixedWorked, parts.fixedAdvanceNet ?? fixedWorked / 2);
+  const fixedMonthEnd = Math.max(0, fixedWorked - fixedAdvance);
+  const ratingWorked = (parts.ratingBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
+  const ratingFirstPart = Math.min(
+    ratingWorked,
+    (parts.ratingBonus / parts.normHours) * firstHalfHours * taxMultiplier
+  );
+  const ratingSecondPart = Math.max(0, ratingWorked - ratingFirstPart);
+  const levelPay = (parts.levelBonus / parts.normHours) * parts.effectiveHours * taxMultiplier;
+  const extrasGross = parts.nightPay + parts.holidayPay + parts.doublePay + parts.taxableBonus + parts.taxiCompensation - parts.fines;
+  const extras = extrasGross * taxMultiplier + (parts.bonusNet ?? 0);
+  const nextMonthRatingPay = ratingSecondPart + levelPay + extras;
+  const midMonthPay = fixedAdvance + ratingFirstPart;
+
+  return {
+    midMonthPay,
+    monthEndPay: fixedMonthEnd,
+    nextMonthRatingPay,
+    tenurePay: parts.tenurePay,
+    estimatedTotal: midMonthPay + fixedMonthEnd + nextMonthRatingPay + parts.tenurePay,
+    fixedAdvance,
+    fixedMonthEnd,
+    fixedSettlement: 0,
+    ratingFirstPart,
+    ratingSecondPart,
+    levelPay,
+    extras,
+    wowBonus: parts.wowBonus,
+    midMonthParts: {
+      base: fixedAdvance,
+      rating: ratingFirstPart,
+      wow: parts.wowBonus
+    },
+    monthEndParts: {
+      base: fixedMonthEnd
+    },
+    nextMonthParts: {
+      rating: ratingSecondPart,
+      level: levelPay,
+      extras,
+      settlement: 0
     }
   };
 }

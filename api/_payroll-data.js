@@ -24,6 +24,7 @@ export const PAYROLL_CONFIG = {
   taxiDivisor: 80.5,
   maxRatingZone: 5,
   maxWowCases: 5,
+  maxTenureYears: 15,
   calculators: {
     service: {
       title: "ЗП оператора сервісу",
@@ -207,6 +208,57 @@ export const PAYROLL_CONFIG = {
         level3: { underZone3: 5575, zone3: 2787 }
       }
     },
+    vk: {
+      title: "ЗП ВК",
+      shortTitle: "ВК",
+      source: "Copy of Верифікатори ЗП від 1.03.26",
+      taxMode: "gross",
+      taxRate: 0.23,
+      doublePayMode: "baseHourly",
+      bonusInputMode: "amountTaxable",
+      bonusLabel: "ВАУ кейси і т.д, грн",
+      paymentScheduleMode: "firstHalfRatingGross",
+      fixedAdvanceNet: 11650,
+      ratingBonusByZone: {
+        1: 52233 - 30360,
+        2: 50410 - 30360,
+        3: 48587 - 30360,
+        4: 46764 - 30360,
+        5: 44940 - 30360
+      },
+      tenureBase: 48441.56,
+      maxTenureYears: 15,
+      ratingFirstPartRate: 0,
+      defaultInputs: {
+        month: "Липень",
+        actualHours: 176,
+        testsHigh: false,
+        ratingZone: 5,
+        level: "level3",
+        salary: 30360,
+        nightHours: 0,
+        holidayHours: 0,
+        doubleHours: 0,
+        wowCases: 0,
+        fines: 0,
+        taxiAmount: 0,
+        tenureYears: 6,
+        firstHalfHours: 79,
+        secondHalfHours: 86,
+        ratingFirstPart: 0,
+        annualIncome: 0,
+        absenceCalendarDays: 365,
+        vacationDays: 0,
+        sickDays: 0,
+        sickInsuranceRate: 0.7,
+        maternityDays: 0
+      },
+      levelBonusByLevel: {
+        level1: 0,
+        level2: 3506.5,
+        level3: 7142.9
+      }
+    },
     video: {
       title: "ЗП відеоверифікатор",
       shortTitle: "Відео",
@@ -285,7 +337,7 @@ export const ACCESS_CONFIG = {
   supervisor: {
     label: "СВ",
     envKey: "SUPERVISOR_ACCESS_CODE",
-    allowedCalculators: ["supervisor", "service", "level4", "xd", "video"]
+    allowedCalculators: ["supervisor", "service", "level4", "xd", "vk", "video"]
   },
   level4: {
     label: "4 лвл",
@@ -296,6 +348,11 @@ export const ACCESS_CONFIG = {
     label: "ХД",
     envKey: "XD_ACCESS_CODE",
     allowedCalculators: ["xd"]
+  },
+  vk: {
+    label: "ВК",
+    envKey: "VK_ACCESS_CODE",
+    allowedCalculators: ["vk"]
   },
   video: {
     label: "Відеоверифікатор",
@@ -331,6 +388,7 @@ export function getPayrollPayloadForRole(role) {
       taxiDivisor: PAYROLL_CONFIG.taxiDivisor,
       maxRatingZone: PAYROLL_CONFIG.maxRatingZone,
       maxWowCases: PAYROLL_CONFIG.maxWowCases,
+      maxTenureYears: PAYROLL_CONFIG.maxTenureYears,
       calculators: Object.fromEntries(
         session.allowedCalculators.map((key) => [key, PAYROLL_CONFIG.calculators[key]])
       )
