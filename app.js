@@ -41,6 +41,8 @@ const toast = document.querySelector("#toast");
 const MAX_SCENARIOS = 6;
 const THEME_STORAGE_KEY = "zp-theme";
 const APP_EYEBROW = "Калькулятор ЗП для графіка 2/2";
+const ACTIVE_ACCESS_ROLES = new Set(["operator", "supervisor", "level4", "xd", "video"]);
+const ACTIVE_CALCULATOR_KEYS = new Set(["service", "supervisor", "level4", "xd", "video"]);
 
 let calculatorType = null;
 let selectedRatingZone = 1;
@@ -51,6 +53,7 @@ init();
 
 async function init() {
   applySavedTheme();
+  removeStaleStaticOptions();
   accessForm.addEventListener("submit", handleAccessSubmit);
   form.addEventListener("input", update);
   form.addEventListener("change", update);
@@ -142,6 +145,7 @@ function renderRoute() {
 }
 
 function renderAccessGate() {
+  removeStaleStaticOptions();
   accessView.hidden = false;
   homeView.hidden = true;
   calculatorView.hidden = true;
@@ -155,6 +159,21 @@ function renderAccessGate() {
   roleBadge.hidden = true;
   document.querySelector("#appTitle").textContent = "Калькулятор ЗП";
   document.querySelector("#appEyebrow").textContent = APP_EYEBROW;
+}
+
+function removeStaleStaticOptions() {
+  accessForm.querySelectorAll("option").forEach((option) => {
+    if (!ACTIVE_ACCESS_ROLES.has(option.value)) {
+      option.remove();
+    }
+  });
+
+  document.querySelectorAll("[data-calculator-choice], [data-mode-link]").forEach((element) => {
+    const type = element.dataset.calculatorChoice || element.dataset.modeLink;
+    if (type && !ACTIVE_CALCULATOR_KEYS.has(type)) {
+      element.remove();
+    }
+  });
 }
 
 async function handleAccessSubmit(event) {
