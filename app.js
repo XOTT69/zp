@@ -254,7 +254,7 @@ function renderModeFields() {
 function renderModeLabels() {
   const taxLabel = `Податок ${formatPercent(CALCULATORS[calculatorType].taxRate)}`;
   setText("#totalMainLabel", "Загальна сума до виплати");
-  setText("#totalGrossLabel", "Сума з податком");
+  setText("#totalGrossLabel", isGrossCalculator() ? "Разом до податку" : "Орієнтовно до податку");
   setText("#totalTaxLabel", taxLabel);
   setText("#baseResultLabel", isGrossCalculator() ? "ЗП чистими" : "До виплати ЗП");
   setText("#tenureResultLabel", isGrossCalculator() ? "Стаж чистими" : "Премія стаж");
@@ -571,6 +571,7 @@ function renderPaymentSchedule(result) {
 
 function renderReport(result) {
   const config = CALCULATORS[calculatorType];
+  const totalGrossLabel = isGrossCalculator() ? "Разом до податку (ЗП + стаж)" : "Орієнтовно до податку";
   const rows = [
     ["Тип", config.title],
     ["Місяць", result.input.month],
@@ -582,7 +583,7 @@ function renderReport(result) {
     ["ЗП", formatCurrency(result.basePay)],
     ["Стаж", formatCurrency(result.tenurePay)],
     ["Податки", formatCurrency(result.tax)],
-    ["Сума з податком", formatCurrency(result.totalGross)],
+    [totalGrossLabel, formatCurrency(result.totalGross)],
     ["Загальна сума до виплати", formatCurrency(result.totalPay)],
     ["15 число", formatCurrency(result.paymentSchedule.midMonthPay)],
     ["31 число", formatCurrency(result.paymentSchedule.monthEndPay)],
@@ -614,30 +615,30 @@ function renderReport(result) {
 
 function serviceRows(result) {
   return [
-    ["До виплати ЗП", result.basePay],
+    ["ЗП чистими", result.basePay],
     ["Нічні", result.nightPay],
     ["Святкові", result.holidayPay],
     ["Оплата X2", result.doublePay],
     ["Монобрат / таксі", result.taxiCompensation],
-    [`Премія стаж ${Math.round(result.tenureRate * 100)}%`, result.tenurePay],
-    ["Загальна сума до виплати", result.totalPay],
-    [`Податок ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.tax],
-    ["Сума з податком", result.totalGross]
+    [`Премія за стаж чистими ${Math.round(result.tenureRate * 100)}%`, result.tenurePay],
+    ["Разом до виплати (ЗП + стаж)", result.totalPay],
+    [`Орієнтовний податок ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.tax],
+    ["Орієнтовно до податку", result.totalGross]
   ];
 }
 
 function grossRows(result) {
   const rows = [
-    ["Сума ЗП з податком", result.baseGross],
-    [`Податок ЗП ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.baseTax],
-    ["До виплати ЗП", result.basePay],
+    ["ЗП до податку", result.baseGross],
+    [`Податок із ЗП ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.baseTax],
+    ["ЗП чистими", result.basePay],
     ...(hasWowBonus() ? [["WOW-кейси", result.wowBonus]] : []),
     ...(result.taxableBonus > 0 ? [["Додаткові бонуси до податку", result.taxableBonus]] : []),
-    [`Стаж з податком ${Math.round(result.tenureRate * 100)}%`, result.tenureGross],
-    [`Податок стаж ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.tenureTax],
+    [`Стаж до податку ${Math.round(result.tenureRate * 100)}%`, result.tenureGross],
+    [`Податок зі стажу ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.tenureTax],
     ["Стаж чистими", result.tenurePay],
-    ["Загальна сума до виплати", result.totalPay],
-    ["Сума з податком", result.totalGross]
+    ["Разом до виплати (ЗП + стаж)", result.totalPay],
+    ["Разом до податку (ЗП + стаж)", result.totalGross]
   ];
   return rows;
 }
@@ -726,13 +727,14 @@ function renderScenarios() {
 }
 
 function buildTextReport(result, config) {
+  const totalGrossLabel = isGrossCalculator() ? "Разом до податку (ЗП + стаж)" : "Орієнтовно до податку";
   return [
     `${config.title}, ${result.input.month}`,
     `Загальна сума до виплати: ${formatCurrency(result.totalPay)}`,
     `ЗП: ${formatCurrency(result.basePay)}`,
     `Стаж: ${formatCurrency(result.tenurePay)}`,
     `Податки: ${formatCurrency(result.tax)}`,
-    `Сума з податком: ${formatCurrency(result.totalGross)}`,
+    `${totalGrossLabel}: ${formatCurrency(result.totalGross)}`,
     `15 число: ${formatCurrency(result.paymentSchedule.midMonthPay)}`,
     `31 число: ${formatCurrency(result.paymentSchedule.monthEndPay)}`,
     `07 число: ${formatCurrency(result.paymentSchedule.nextMonthRatingPay)}`,

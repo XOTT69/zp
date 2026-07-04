@@ -88,6 +88,42 @@ const videoResult = calculatePayroll({
   secondHalfHours: 82.5
 }, "video");
 
+const videoLevel2Zone4Result = calculatePayroll({
+  month: "Липень",
+  actualHours: 165,
+  testsHigh: false,
+  ratingZone: 4,
+  level: "level2",
+  salary: 23300,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 0,
+  firstHalfHours: 82.5,
+  secondHalfHours: 82.5
+}, "video");
+
+const videoLevel3GreenResult = calculatePayroll({
+  month: "Липень",
+  actualHours: 165,
+  testsHigh: false,
+  ratingZone: 1,
+  level: "level3",
+  salary: 23300,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 0,
+  firstHalfHours: 82.5,
+  secondHalfHours: 82.5
+}, "video");
+
 const checks = [
   ["service.normHours", serviceResult.normHours, 165],
   ["service.effectiveHours", serviceResult.effectiveHours, 188],
@@ -136,7 +172,11 @@ const checks = [
   ["video.totalPay", videoResult.totalPay, 37300],
   ["video.payment15", videoResult.paymentSchedule.midMonthPay, 17250],
   ["video.payment31", videoResult.paymentSchedule.monthEndPay, 11650],
-  ["video.payment07", videoResult.paymentSchedule.nextMonthRatingPay, 8400]
+  ["video.payment07", videoResult.paymentSchedule.nextMonthRatingPay, 8400],
+  ["video.level2Zone4.levelBonus", videoLevel2Zone4Result.levelBonus, 0],
+  ["video.level2Zone4.totalPay", videoLevel2Zone4Result.totalPay, 35900],
+  ["video.level3Green.levelBonus", videoLevel3GreenResult.levelBonus, 5500],
+  ["video.level3Green.totalPay", videoLevel3GreenResult.totalPay, 45600]
 ];
 
 let failed = false;
