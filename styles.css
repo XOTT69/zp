@@ -395,7 +395,8 @@ h2 {
 }
 
 .home-copy,
-.choice-card {
+.choice-card,
+.home-help {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--glass);
@@ -461,6 +462,40 @@ h2 {
   color: var(--muted);
   font-size: 0.95rem;
   line-height: 1.45;
+}
+
+.home-help {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.home-help div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.home-help span {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-help strong {
+  font-size: 1.05rem;
+}
+
+.home-help small {
+  color: var(--muted);
+  line-height: 1.4;
 }
 
 .summary-strip > div {
@@ -1126,7 +1161,8 @@ h2 {
 :root[data-theme="dark"] .breakdown-row,
 :root[data-theme="dark"] .report-panel,
 :root[data-theme="dark"] .absence-row,
-:root[data-theme="dark"] .scenario-item {
+:root[data-theme="dark"] .scenario-item,
+:root[data-theme="dark"] .home-help div {
   color: var(--ink);
   background: var(--panel);
 }
@@ -1318,7 +1354,8 @@ h2 {
   :root:not([data-theme]) .breakdown-row,
   :root:not([data-theme]) .report-panel,
   :root:not([data-theme]) .absence-row,
-  :root:not([data-theme]) .scenario-item {
+  :root:not([data-theme]) .scenario-item,
+  :root:not([data-theme]) .home-help div {
     color: var(--ink);
     background: var(--panel);
   }
