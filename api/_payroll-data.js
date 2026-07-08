@@ -19,6 +19,41 @@ export const LEVELS = [
   { value: "level3", label: "3-й рівень" }
 ];
 
+const TWO_TWO_MONTH_HOURS = {
+  Січень: 165,
+  Лютий: 154,
+  Березень: 165,
+  Квітень: 165,
+  Травень: 165,
+  Червень: 165,
+  Липень: 165,
+  Серпень: 165,
+  Вересень: 165,
+  Жовтень: 165,
+  Листопад: 165,
+  Грудень: 165
+};
+
+const FIVE_TWO_MONTH_HOURS = {
+  Січень: 176,
+  Лютий: 160,
+  Березень: 176,
+  Квітень: 176,
+  Травень: 168,
+  Червень: 176,
+  Липень: 184,
+  Серпень: 168,
+  Вересень: 176,
+  Жовтень: 176,
+  Листопад: 168,
+  Грудень: 184
+};
+
+const WORK_SCHEDULE_OPTIONS = [
+  { value: "2/2", label: "2/2" },
+  { value: "5/2", label: "5/2" }
+];
+
 export const PAYROLL_CONFIG = {
   defaultTaxRate: 0.23,
   taxiDivisor: 80.5,
@@ -32,6 +67,12 @@ export const PAYROLL_CONFIG = {
       source: "Калькулятор ЗП для графіка 2/2",
       taxMode: "net",
       taxRate: 0.23,
+      scheduleOptions: WORK_SCHEDULE_OPTIONS,
+      defaultWorkSchedule: "2/2",
+      scheduleMonthHours: {
+        "2/2": TWO_TWO_MONTH_HOURS,
+        "5/2": FIVE_TWO_MONTH_HOURS
+      },
       ratingBonusByZone: {
         1: 23062,
         2: 20290,
@@ -43,6 +84,7 @@ export const PAYROLL_CONFIG = {
       ratingFirstPartRate: 3100 / 23062,
       defaultInputs: {
         month: "Липень",
+        workSchedule: "2/2",
         actualHours: 187,
         testsHigh: true,
         ratingZone: 1,
@@ -125,17 +167,23 @@ export const PAYROLL_CONFIG = {
       source: "Калькулятор ЗП для графіка 2/2",
       taxMode: "gross",
       taxRate: 0.23,
+      maxRatingZone: 3,
+      scheduleOptions: WORK_SCHEDULE_OPTIONS,
+      defaultWorkSchedule: "2/2",
+      scheduleMonthHours: {
+        "2/2": TWO_TWO_MONTH_HOURS,
+        "5/2": FIVE_TWO_MONTH_HOURS
+      },
       ratingBonusByZone: {
         1: 34765,
         2: 31165,
-        3: 27543,
-        4: 0,
-        5: 0
+        3: 27543
       },
       tenureBase: 53406,
       ratingFirstPartRate: 0,
       defaultInputs: {
         month: "Червень",
+        workSchedule: "2/2",
         actualHours: 157.5,
         testsHigh: false,
         ratingZone: 1,
@@ -295,39 +343,12 @@ export const PAYROLL_CONFIG = {
         }
       },
       scheduleOptions: [
-        { value: "2/2", label: "2/2" },
-        { value: "5/2", label: "5/2" }
+        ...WORK_SCHEDULE_OPTIONS
       ],
       defaultWorkSchedule: "2/2",
       scheduleMonthHours: {
-        "2/2": {
-          Січень: 165,
-          Лютий: 154,
-          Березень: 165,
-          Квітень: 165,
-          Травень: 165,
-          Червень: 165,
-          Липень: 165,
-          Серпень: 165,
-          Вересень: 165,
-          Жовтень: 165,
-          Листопад: 165,
-          Грудень: 165
-        },
-        "5/2": {
-          Січень: 176,
-          Лютий: 160,
-          Березень: 176,
-          Квітень: 176,
-          Травень: 168,
-          Червень: 176,
-          Липень: 184,
-          Серпень: 168,
-          Вересень: 176,
-          Жовтень: 176,
-          Листопад: 168,
-          Грудень: 184
-        }
+        "2/2": TWO_TWO_MONTH_HOURS,
+        "5/2": FIVE_TWO_MONTH_HOURS
       },
       ratingBonusByZone: {
         1: 35570,

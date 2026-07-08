@@ -35,6 +35,22 @@ const serviceResult = calculatePayroll({
   tenureYears: 5
 }, "service");
 
+const service52Result = calculatePayroll({
+  month: "Липень",
+  workSchedule: "5/2",
+  actualHours: 184,
+  testsHigh: false,
+  ratingZone: 1,
+  level: "level3",
+  salary: 12497,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 1
+}, "service");
+
 const supervisorResult = calculatePayroll({
   month: "Травень",
   actualHours: 200,
@@ -65,6 +81,40 @@ const level4Result = calculatePayroll({
   fines: 0,
   taxiAmount: 0,
   tenureYears: 4
+}, "level4");
+
+const level452Result = calculatePayroll({
+  month: "Липень",
+  workSchedule: "5/2",
+  actualHours: 184,
+  testsHigh: false,
+  ratingZone: 1,
+  level: "level3",
+  salary: 22241,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 1
+}, "level4");
+
+const level4ClampedZoneResult = calculatePayroll({
+  month: "Липень",
+  workSchedule: "2/2",
+  actualHours: 165,
+  testsHigh: false,
+  ratingZone: 5,
+  level: "level3",
+  salary: 22241,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 0
 }, "level4");
 
 const xdResult = calculatePayroll({
@@ -374,6 +424,9 @@ const checks = [
   ["service.totalPay", serviceResult.totalPay, 58576.471212],
   ["service.tax", serviceResult.tax, 17496.868024],
   ["service.totalGross", serviceResult.totalGross, 76073.339237],
+  ["service52.normHours", service52Result.normHours, 184],
+  ["service52.ratingBonus", service52Result.ratingBonus, 23062],
+  ["service52.totalPay", service52Result.totalPay, 42632.55],
   ["supervisor.normHours", supervisorResult.normHours, 165],
   ["supervisor.effectiveHours", supervisorResult.effectiveHours, 201],
   ["supervisor.ratingBonus", supervisorResult.ratingBonus, 9440],
@@ -393,6 +446,11 @@ const checks = [
   ["level4.basePay", level4Result.basePay, 47465.4992],
   ["level4.tenurePay", level4Result.tenurePay, 7850.682],
   ["level4.totalPay", level4Result.totalPay, 55316.1812],
+  ["level452.normHours", level452Result.normHours, 184],
+  ["level452.ratingBonus", level452Result.ratingBonus, 34765],
+  ["level452.totalPay", level452Result.totalPay, 51520.931],
+  ["level4.clampedZone", level4ClampedZoneResult.input.ratingZone, 3],
+  ["level4.clampedRatingBonus", level4ClampedZoneResult.ratingBonus, 27543],
   ["xd.normHours", xdResult.normHours, 165],
   ["xd.ratingBonus", xdResult.ratingBonus, 19130],
   ["xd.levelBonus", xdResult.levelBonus, 2787],

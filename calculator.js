@@ -31,6 +31,8 @@ export function configurePayrollData(payload) {
         bonusLabel: config.bonusLabel ?? "WOW-кейси",
         deductionLabel: config.deductionLabel ?? "Штрафи",
         scheduleOptions: config.scheduleOptions ?? null,
+        ratingZones: getRatingZones(config),
+        maxRatingZone: getMaxRatingZone(config),
         doublePayMode: config.doublePayMode ?? "salaryPlusRating"
       }
     ])
@@ -339,6 +341,24 @@ export function getLevelBonus(level, ratingZone, calculatorType = "service") {
   return getLevelBonusFromRules(level, ratingZone, rules);
 }
 
+function getRatingZones(config) {
+  const zones = Object.keys(config?.ratingBonusByZone ?? {})
+    .map(Number)
+    .filter((zone) => Number.isFinite(zone));
+  const maxZone = getMaxRatingZone(config);
+  return zones
+    .filter((zone) => zone <= maxZone)
+    .sort((a, b) => a - b);
+}
+
+function getMaxRatingZone(config) {
+  if (config?.maxRatingZone) return config.maxRatingZone;
+  const zones = Object.keys(config?.ratingBonusByZone ?? {})
+    .map(Number)
+    .filter((zone) => Number.isFinite(zone));
+  return zones.length ? Math.max(...zones) : PAYROLL_CONFIG.maxRatingZone;
+}
+
 function getLevelBonusFromRules(level, ratingZone, rules) {
   if (!rules.level2 || !rules.level3) return 0;
 
@@ -379,7 +399,8 @@ function normalizeInputs(input, calculatorType) {
   const defaults = getDefaultInputs(calculatorType);
   const config = PAYROLL_CONFIG.calculators[calculatorType];
   const taxRate = getTaxRate(config);
-  const ratingZone = Math.min(PAYROLL_CONFIG.maxRatingZone, Math.max(1, Math.round(toNumber(input.ratingZone) || 1)));
+  const maxRatingZone = getMaxRatingZone(config);
+  const ratingZone = Math.min(maxRatingZone, Math.max(1, Math.round(toNumber(input.ratingZone) || 1)));
   const ratingBonus = config.ratingBonusByZone[ratingZone] ?? 0;
   const ratingTaxMultiplier = config.taxMode === "gross" ? 1 - taxRate : 1;
   const ratingFirstPart = Math.max(

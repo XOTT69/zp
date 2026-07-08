@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=44";
+} from "./calculator.js?v=45";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
@@ -338,7 +338,8 @@ function renderModeLabels() {
 }
 
 function renderRatingButtons(activeZone) {
-  ratingZoneGroup.innerHTML = [1, 2, 3, 4, 5]
+  const zones = getRatingZones();
+  ratingZoneGroup.innerHTML = zones
     .map(
       (zone) => `
         <button
@@ -355,7 +356,7 @@ function renderRatingButtons(activeZone) {
 function handleRatingClick(event) {
   const button = event.target.closest("[data-zone]");
   if (!button) return;
-  selectedRatingZone = Number(button.dataset.zone);
+  selectedRatingZone = clampRatingZone(Number(button.dataset.zone));
   renderRatingButtons(selectedRatingZone);
   update();
 }
@@ -396,7 +397,7 @@ function readInputs() {
     workSchedule: hasWorkScheduleInput() ? data.get("workSchedule") : defaults.workSchedule,
     actualHours: data.get("actualHours"),
     testsHigh: hasTestsInput() && form.elements.testsHigh.checked,
-    ratingZone: selectedRatingZone,
+    ratingZone: clampRatingZone(selectedRatingZone),
     level: data.get("level"),
     salary: defaults.salary,
     nightHours: data.get("nightHours"),
@@ -930,14 +931,17 @@ function loadInputs(type) {
     if (saved.secondHalfHours === undefined) {
       saved.secondHalfHours = defaults.secondHalfHours;
     }
-    return {
+    const inputs = {
       ...defaults,
       ...saved,
       salary: defaults.salary,
       ratingFirstPart: defaults.ratingFirstPart
     };
+    inputs.ratingZone = clampRatingZone(inputs.ratingZone, type);
+    return inputs;
   } catch {
-    return getRuntimeDefaults(type);
+    const defaults = getRuntimeDefaults(type);
+    return { ...defaults, ratingZone: clampRatingZone(defaults.ratingZone, type) };
   }
 }
 
@@ -967,6 +971,17 @@ function saveScenarios(type, scenarios) {
 
 function levelLabel(value) {
   return LEVELS.find((level) => level.value === value)?.label ?? value;
+}
+
+function getRatingZones(type = calculatorType) {
+  return CALCULATORS[type]?.ratingZones?.length ? CALCULATORS[type].ratingZones : [1, 2, 3, 4, 5];
+}
+
+function clampRatingZone(zone, type = calculatorType) {
+  const zones = getRatingZones(type);
+  const numberZone = Number(zone);
+  if (zones.includes(numberZone)) return numberZone;
+  return zones.at(-1) ?? 1;
 }
 
 function getLevelBonusDisplayValue(result) {
