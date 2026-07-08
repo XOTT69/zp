@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=36";
+} from "./calculator.js?v=38";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
@@ -972,7 +972,7 @@ function levelLabel(value) {
 function getLevelBonusDisplayValue(result) {
   if (!isGrossCalculator()) return result.levelBonus;
   if (calculatorType === "video") {
-    return result.paymentSchedule?.nextMonthParts?.level ?? 0;
+    return result.normHours ? (result.levelBonus / result.normHours) * result.effectiveHours : 0;
   }
   return result.levelBonus;
 }

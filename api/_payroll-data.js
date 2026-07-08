@@ -226,7 +226,7 @@ export const PAYROLL_CONFIG = {
         4: 46764 - 30360,
         5: 44940 - 30360
       },
-      tenureBase: 48441.56,
+      tenureBase: 48590,
       maxTenureYears: 15,
       ratingFirstPartRate: 0,
       defaultInputs: {
@@ -263,8 +263,8 @@ export const PAYROLL_CONFIG = {
           5: 0
         },
         level3: {
-          1: 5500 / 0.77,
-          2: 5500 / 0.77,
+          1: 7240,
+          2: 7240,
           3: 2700 / 0.77,
           4: 0,
           5: 0
