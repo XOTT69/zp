@@ -12,8 +12,8 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
-    <script src="./theme.js?v=32"></script>
-    <link rel="stylesheet" href="./styles.css?v=32" />
+    <script src="./theme.js?v=34"></script>
+    <link rel="stylesheet" href="./styles.css?v=34" />
   </head>
   <body>
     <div class="shell">
@@ -118,6 +118,59 @@
             <h2>Останні події</h2>
           </div>
           <div class="admin-table" id="adminRecent"></div>
+        </section>
+
+        <section class="panel admin-panel">
+          <div class="section-heading">
+            <p class="eyebrow">Прогноз</p>
+            <h2>Правила виплат по місяцях</h2>
+          </div>
+          <form class="admin-rule-form" id="adminRuleForm">
+            <label class="field">
+              <span>Калькулятор</span>
+              <select name="calculator">
+                <option value="iron">IRON</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Місяць</span>
+              <select name="month" id="adminRuleMonth"></select>
+            </label>
+            <label class="field">
+              <span>15 число, сума</span>
+              <input name="firstHalfAmount" type="number" min="0" step="0.01" inputmode="decimal" />
+            </label>
+            <label class="field">
+              <span>15 число, годин</span>
+              <input name="firstHalfHours" type="number" min="0" step="0.5" inputmode="decimal" />
+            </label>
+            <label class="field">
+              <span>31 число, сума</span>
+              <input name="secondHalfAmount" type="number" min="0" step="0.01" inputmode="decimal" />
+            </label>
+            <label class="field">
+              <span>31 число, годин</span>
+              <input name="secondHalfHours" type="number" min="0" step="0.5" inputmode="decimal" />
+            </label>
+            <label class="field">
+              <span>07 число, сума</span>
+              <input name="nextMonthAmount" type="number" min="0" step="0.01" inputmode="decimal" />
+            </label>
+            <label class="field">
+              <span>Стаж, сума</span>
+              <input name="tenureAmount" type="number" min="0" step="0.01" inputmode="decimal" />
+            </label>
+            <label class="field">
+              <span>Стаж, годин</span>
+              <input name="tenureHours" type="number" min="0" step="0.5" inputmode="decimal" />
+            </label>
+            <label class="field">
+              <span>Коментар</span>
+              <input name="note" type="text" maxlength="160" />
+            </label>
+            <button class="primary-button" type="submit">Зберегти правило</button>
+          </form>
+          <div class="admin-table admin-rules" id="adminPaymentRules"></div>
         </section>
       </section>
 
@@ -431,6 +484,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <script type="module" src="./app.js?v=32"></script>
+    <script type="module" src="./app.js?v=34"></script>
   </body>
 </html>

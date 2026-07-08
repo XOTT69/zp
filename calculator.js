@@ -154,7 +154,9 @@ export function calculateServicePayroll(input, calculatorType = "service") {
     paymentScheduleMode: config.paymentScheduleMode,
     fixedAdvanceNet: config.fixedAdvanceNet,
     variableFirstPartNet: config.variableFirstPartNet,
-    paymentHourlyRates: config.paymentHourlyRates
+    paymentHourlyRates: config.paymentHourlyRates,
+    paymentMonthlyRates: config.paymentMonthlyRates,
+    paymentMonthlyRules: config.paymentMonthlyRules
   });
   const absencePayments = calculateAbsencePayments(values);
 
@@ -266,7 +268,9 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
     paymentScheduleMode: config.paymentScheduleMode,
     fixedAdvanceNet: config.fixedAdvanceNet,
     variableFirstPartNet: config.variableFirstPartNet,
-    paymentHourlyRates: config.paymentHourlyRates
+    paymentHourlyRates: config.paymentHourlyRates,
+    paymentMonthlyRates: config.paymentMonthlyRates,
+    paymentMonthlyRules: config.paymentMonthlyRules
   });
   const absencePayments = calculateAbsencePayments(values);
 
@@ -492,18 +496,26 @@ function calculatePaymentSchedule(values, parts) {
 function calculateIronPaymentSchedule(values, parts) {
   const firstHalfHours = Math.min(values.firstHalfHours, parts.effectiveHours);
   const secondHalfHours = Math.min(values.secondHalfHours, Math.max(0, parts.effectiveHours - firstHalfHours));
-  const midMonthPay = (parts.paymentHourlyRates?.firstHalfNet ?? 0) * firstHalfHours;
-  const monthEndPay = (parts.paymentHourlyRates?.secondHalfNet ?? 0) * secondHalfHours;
+  const rule = parts.paymentMonthlyRules?.[values.month];
+  const rates = getIronRates(values, parts, rule);
+  const midMonthPay = getExactOrRatedPayment(rule, "firstHalf", firstHalfHours, rates.firstHalfNet);
+  const monthEndPay = getExactOrRatedPayment(rule, "secondHalf", secondHalfHours, rates.secondHalfNet);
   const fixedAdvance = Math.min(midMonthPay, (values.salary / parts.normHours) * (parts.normHours / 2) * (1 - parts.taxRate));
   const ratingFirstPart = Math.max(0, midMonthPay - fixedAdvance);
-  const nextMonthRatingPay = Math.max(0, parts.basePay - midMonthPay - monthEndPay);
+  const exactNextMonth = rule && closeHours(firstHalfHours, rule.firstHalfHours) && closeHours(secondHalfHours, rule.secondHalfHours)
+    ? rule.nextMonthAmount
+    : null;
+  const nextMonthRatingPay = exactNextMonth ?? Math.max(0, parts.basePay - midMonthPay - monthEndPay);
+  const tenurePay = rule?.tenureAmount && (!rule.tenureHours || closeHours(values.tenureHours, rule.tenureHours))
+    ? rule.tenureAmount
+    : parts.tenurePay;
 
   return {
     midMonthPay,
     monthEndPay,
     nextMonthRatingPay,
-    tenurePay: parts.tenurePay,
-    estimatedTotal: midMonthPay + monthEndPay + nextMonthRatingPay + parts.tenurePay,
+    tenurePay,
+    estimatedTotal: midMonthPay + monthEndPay + nextMonthRatingPay + tenurePay,
     fixedAdvance,
     fixedMonthEnd: monthEndPay,
     fixedSettlement: 0,
@@ -527,6 +539,29 @@ function calculateIronPaymentSchedule(values, parts) {
       settlement: 0
     }
   };
+}
+
+function getIronRates(values, parts, rule) {
+  if (rule?.firstHalfAmount && rule?.firstHalfHours && rule?.secondHalfAmount && rule?.secondHalfHours) {
+    return {
+      firstHalfNet: rule.firstHalfAmount / rule.firstHalfHours,
+      secondHalfNet: rule.secondHalfAmount / rule.secondHalfHours
+    };
+  }
+  return parts.paymentMonthlyRates?.[values.month] ?? parts.paymentHourlyRates ?? {};
+}
+
+function getExactOrRatedPayment(rule, part, hours, rate = 0) {
+  const amountKey = `${part}Amount`;
+  const hoursKey = `${part}Hours`;
+  if (rule?.[amountKey] && closeHours(hours, rule[hoursKey])) {
+    return rule[amountKey];
+  }
+  return rate * hours;
+}
+
+function closeHours(left, right) {
+  return Math.abs(Number(left || 0) - Number(right || 0)) < 0.01;
 }
 
 function calculateFirstHalfRatingGrossPaymentSchedule(values, parts) {

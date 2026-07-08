@@ -256,6 +256,26 @@ const ironActualResult = calculatePayroll({
   secondHalfHours: 88
 }, "iron");
 
+const ironMayResult = calculatePayroll({
+  month: "Травень",
+  workSchedule: "2/2",
+  actualHours: 137,
+  testsHigh: false,
+  ratingZone: 2,
+  level: "level2",
+  salary: 22240,
+  nightHours: 39,
+  holidayHours: 0,
+  doubleHours: 0.5,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 2,
+  tenureHours: 137,
+  firstHalfHours: 93,
+  secondHalfHours: 44
+}, "iron");
+
 const monthNormChecks = MONTHS.map((month) => [
   `month.${month.name}.hours`,
   month.hours,
@@ -350,7 +370,11 @@ const checks = [
   ["ironActual.payment15", ironActualResult.paymentSchedule.midMonthPay, 19543.62],
   ["ironActual.payment31", ironActualResult.paymentSchedule.monthEndPay, 8873.76],
   ["ironActual.payment07", ironActualResult.paymentSchedule.nextMonthRatingPay, 17944.852],
-  ["ironActual.payment09", ironActualResult.paymentSchedule.tenurePay, 4386.741333]
+  ["ironActual.payment09", ironActualResult.paymentSchedule.tenurePay, 4386.741333],
+  ["ironMay.payment15", ironMayResult.paymentSchedule.midMonthPay, 19908.10],
+  ["ironMay.payment31", ironMayResult.paymentSchedule.monthEndPay, 4566.62],
+  ["ironMay.payment07", ironMayResult.paymentSchedule.nextMonthRatingPay, 13552.30],
+  ["ironMay.payment09", ironMayResult.paymentSchedule.tenurePay, 3414.679333]
 ];
 
 let failed = false;

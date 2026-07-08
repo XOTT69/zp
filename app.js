@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=32";
+} from "./calculator.js?v=34";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
@@ -18,6 +18,9 @@ const adminView = document.querySelector("#adminView");
 const adminButton = document.querySelector("#adminButton");
 const adminRefreshButton = document.querySelector("#adminRefreshButton");
 const adminResetStatsButton = document.querySelector("#adminResetStatsButton");
+const adminRuleForm = document.querySelector("#adminRuleForm");
+const adminRuleMonth = document.querySelector("#adminRuleMonth");
+const adminPaymentRules = document.querySelector("#adminPaymentRules");
 const adminStorageNotice = document.querySelector("#adminStorageNotice");
 const adminStats = document.querySelector("#adminStats");
 const adminRoles = document.querySelector("#adminRoles");
@@ -57,6 +60,7 @@ let selectedRatingZone = 1;
 let currentResult = null;
 let accessSession = null;
 let lastTrackedView = "";
+let lastPayrollPayload = null;
 
 init();
 
@@ -75,6 +79,8 @@ async function init() {
   adminButton.addEventListener("click", () => navigateTo("/admin"));
   adminRefreshButton.addEventListener("click", renderAdminPanel);
   adminResetStatsButton.addEventListener("click", resetAdminStats);
+  adminRuleForm.addEventListener("submit", saveAdminPaymentRule);
+  adminPaymentRules.addEventListener("click", deleteAdminPaymentRule);
   addScenarioButton.addEventListener("click", addScenario);
   clearScenariosButton.addEventListener("click", clearScenarios);
   scenarioList.addEventListener("click", handleScenarioClick);
@@ -94,7 +100,8 @@ async function hydrateSession() {
     const data = await response.json();
     if (!data.authenticated) return;
     accessSession = data.session;
-    configurePayrollData(data.payroll);
+    lastPayrollPayload = await applyRemotePaymentRules(data.payroll);
+    configurePayrollData(lastPayrollPayload);
     renderSelects();
   } catch {
     accessError.textContent = "Сервер авторизації недоступний. Запустіть сайт через Vercel.";
@@ -233,7 +240,8 @@ async function handleAccessSubmit(event) {
     }
 
     accessSession = data.session;
-    configurePayrollData(data.payroll);
+    lastPayrollPayload = await applyRemotePaymentRules(data.payroll);
+    configurePayrollData(lastPayrollPayload);
     renderSelects();
     accessForm.reset();
     navigateTo(accessSession.isAdmin ? "/admin" : `/${firstAllowedCalculator()}`);
@@ -287,6 +295,11 @@ function renderSelects() {
   monthSelect.innerHTML = MONTHS.map(
     (month) => `<option value="${month.name}">${month.name}</option>`
   ).join("");
+  if (adminRuleMonth) {
+    adminRuleMonth.innerHTML = MONTHS.map(
+      (month) => `<option value="${month.name}">${month.name}</option>`
+    ).join("");
+  }
 
   levelSelect.innerHTML = LEVELS.map(
     (level) => `<option value="${level.value}">${level.label}</option>`
@@ -1045,17 +1058,22 @@ async function renderAdminPanel() {
   adminStats.innerHTML = "";
   adminRoles.innerHTML = "";
   adminRecent.innerHTML = "";
+  adminPaymentRules.innerHTML = "";
 
   try {
-    const response = await fetch("/api/admin/stats", { credentials: "same-origin" });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || "Не вдалося отримати статистику.");
-    }
+    const [statsResponse, rulesResponse] = await Promise.all([
+      fetch("/api/admin/stats", { credentials: "same-origin" }),
+      fetch("/api/admin/payment-rules", { credentials: "same-origin" })
+    ]);
+    const data = await statsResponse.json();
+    const rulesData = await rulesResponse.json();
+    if (!statsResponse.ok) throw new Error(data.error || "Не вдалося отримати статистику.");
+    if (!rulesResponse.ok) throw new Error(rulesData.error || "Не вдалося отримати правила виплат.");
 
     renderAdminStats(data.stats);
     renderAdminRoles(data.roles, data.calculators);
     renderAdminRecent(data.stats.recent);
+    renderAdminPaymentRules(rulesData.rules);
   } catch (error) {
     adminStorageNotice.textContent = error.message || "Не вдалося завантажити адмін-панель.";
   }
@@ -1134,6 +1152,89 @@ function renderAdminRecent(recent) {
     .join("");
 }
 
+function renderAdminPaymentRules(rules = {}) {
+  const entries = Object.entries(rules).flatMap(([calculator, byMonth]) =>
+    Object.entries(byMonth).map(([month, rule]) => ({ calculator, month, rule }))
+  );
+
+  if (!entries.length) {
+    adminPaymentRules.innerHTML = `<p class="empty-state">Правил ще немає. Додайте факт виплат за місяць, щоб прогноз калібрувався автоматично.</p>`;
+    return;
+  }
+
+  adminPaymentRules.innerHTML = entries
+    .map(({ calculator, month, rule }) => `
+      <article class="admin-row">
+        <div>
+          <strong>${calculator.toUpperCase()} · ${month}</strong>
+          <small>${rule.note || "Калібрування по фактичних виплатах"}</small>
+        </div>
+        <small>
+          15: ${formatCurrency(rule.firstHalfAmount)} / ${roundMoney(rule.firstHalfHours)} год ·
+          31: ${formatCurrency(rule.secondHalfAmount)} / ${roundMoney(rule.secondHalfHours)} год ·
+          07: ${rule.nextMonthAmount === null ? "авто" : formatCurrency(rule.nextMonthAmount)} ·
+          стаж: ${rule.tenureAmount === null ? "авто" : formatCurrency(rule.tenureAmount)}
+        </small>
+        <button class="ghost-button danger-button" type="button" data-delete-rule="${calculator}:${month}">Видалити</button>
+      </article>
+    `)
+    .join("");
+}
+
+async function saveAdminPaymentRule(event) {
+  event.preventDefault();
+  const data = new FormData(adminRuleForm);
+  const payload = {
+    calculator: data.get("calculator"),
+    month: data.get("month"),
+    rule: {
+      firstHalfAmount: data.get("firstHalfAmount"),
+      firstHalfHours: data.get("firstHalfHours"),
+      secondHalfAmount: data.get("secondHalfAmount"),
+      secondHalfHours: data.get("secondHalfHours"),
+      nextMonthAmount: data.get("nextMonthAmount"),
+      tenureAmount: data.get("tenureAmount"),
+      tenureHours: data.get("tenureHours"),
+      note: data.get("note")
+    }
+  };
+
+  const response = await fetch("/api/admin/payment-rules", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    showStatus("Не вдалося зберегти правило");
+    return;
+  }
+
+  await reloadPaymentRules();
+  adminRuleForm.reset();
+  showStatus("Правило виплат збережено");
+  renderAdminPanel();
+}
+
+async function deleteAdminPaymentRule(event) {
+  const button = event.target.closest("[data-delete-rule]");
+  if (!button) return;
+  const [calculator, month] = button.dataset.deleteRule.split(":");
+  const response = await fetch("/api/admin/payment-rules", {
+    method: "DELETE",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ calculator, month })
+  });
+  if (!response.ok) {
+    showStatus("Не вдалося видалити правило");
+    return;
+  }
+  await reloadPaymentRules();
+  showStatus("Правило видалено");
+  renderAdminPanel();
+}
+
 async function resetAdminStats() {
   if (!accessSession?.isAdmin) return;
   const shouldReset = window.confirm("Скинути всю статистику входів і переглядів?");
@@ -1169,6 +1270,53 @@ function trackEvent(type, details = {}) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type, calculator, path })
   }).catch(() => {});
+}
+
+async function applyRemotePaymentRules(payroll) {
+  try {
+    const response = await fetch("/api/payment-rules", { credentials: "same-origin" });
+    const data = await response.json();
+    if (!response.ok) return payroll;
+    return applyPaymentRules(payroll, data.rules);
+  } catch {
+    return payroll;
+  }
+}
+
+async function reloadPaymentRules() {
+  if (!lastPayrollPayload) return;
+  const basePayload = {
+    ...lastPayrollPayload,
+    config: {
+      ...lastPayrollPayload.config,
+      calculators: Object.fromEntries(
+        Object.entries(lastPayrollPayload.config.calculators).map(([key, config]) => [
+          key,
+          { ...config, paymentMonthlyRules: undefined }
+        ])
+      )
+    }
+  };
+  lastPayrollPayload = await applyRemotePaymentRules(basePayload);
+  configurePayrollData(lastPayrollPayload);
+}
+
+function applyPaymentRules(payroll, rules = {}) {
+  return {
+    ...payroll,
+    config: {
+      ...payroll.config,
+      calculators: Object.fromEntries(
+        Object.entries(payroll.config.calculators).map(([key, config]) => [
+          key,
+          {
+            ...config,
+            paymentMonthlyRules: rules[key] ?? config.paymentMonthlyRules
+          }
+        ])
+      )
+    }
+  };
 }
 
 function eventLabel(type) {

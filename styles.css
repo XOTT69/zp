@@ -345,6 +345,17 @@ h2 {
   gap: 8px;
 }
 
+.admin-rule-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.admin-rule-form button {
+  align-self: end;
+}
+
 .admin-row {
   display: grid;
   grid-template-columns: 1fr 1.2fr 0.9fr;
@@ -1201,6 +1212,10 @@ h2 {
   }
 
   .admin-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-rule-form {
     grid-template-columns: 1fr;
   }
 

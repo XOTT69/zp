@@ -284,6 +284,16 @@ export const PAYROLL_CONFIG = {
         firstHalfNet: 19543.62 / 88,
         secondHalfNet: 8873.76 / 88
       },
+      paymentMonthlyRates: {
+        Травень: {
+          firstHalfNet: 19908.10 / 93,
+          secondHalfNet: 4566.62 / 44
+        },
+        Червень: {
+          firstHalfNet: 19543.62 / 88,
+          secondHalfNet: 8873.76 / 88
+        }
+      },
       scheduleOptions: [
         { value: "2/2", label: "2/2" },
         { value: "5/2", label: "5/2" }
