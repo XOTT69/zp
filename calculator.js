@@ -52,7 +52,7 @@ function applyRuntimeConfigOverrides(config) {
   if (calculators.video) {
     calculators.video = {
       ...calculators.video,
-      levelBonusByLevelAndZone: {
+      levelBonusByLevelAndZone: calculators.video.levelBonusByLevelAndZone ?? {
         level1: { default: 0 },
         level2: {
           1: 3620,

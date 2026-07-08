@@ -118,6 +118,12 @@ export const PAYROLL_CONFIG = {
       source: "Калькулятор ЗП для графіка 2/2",
       taxMode: "gross",
       taxRate: 0.23,
+      scheduleOptions: WORK_SCHEDULE_OPTIONS,
+      defaultWorkSchedule: "2/2",
+      scheduleMonthHours: {
+        "2/2": TWO_TWO_MONTH_HOURS,
+        "5/2": FIVE_TWO_MONTH_HOURS
+      },
       ratingBonusByZone: {
         1: 19160,
         2: 16730,
@@ -130,6 +136,7 @@ export const PAYROLL_CONFIG = {
       ratingFirstPartRate: 0,
       defaultInputs: {
         month: "Травень",
+        workSchedule: "2/2",
         actualHours: 200,
         testsHigh: true,
         ratingZone: 3,

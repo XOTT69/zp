@@ -12,8 +12,8 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
-    <script src="./theme.js?v=46"></script>
-    <link rel="stylesheet" href="./styles.css?v=46" />
+    <script src="./theme.js?v=51"></script>
+    <link rel="stylesheet" href="./styles.css?v=51" />
   </head>
   <body>
     <div class="shell">
@@ -183,6 +183,68 @@
           </form>
           <div class="admin-table admin-rules" id="adminPaymentRules"></div>
         </section>
+
+        <section class="panel admin-panel">
+          <div class="section-heading">
+            <p class="eyebrow">Версія</p>
+            <h2>Актуальність правил</h2>
+          </div>
+          <form class="admin-rule-form" id="adminVersionForm">
+            <label class="field"><span>Назва версії</span><input name="label" type="text" maxlength="120" /></label>
+            <label class="field"><span>Оновлено</span><input name="updatedAt" type="date" /></label>
+            <label class="field full"><span>Коментар</span><input name="note" type="text" maxlength="240" /></label>
+            <button class="primary-button" type="submit">Зберегти версію</button>
+          </form>
+        </section>
+
+        <section class="panel admin-panel">
+          <div class="section-heading">
+            <p class="eyebrow">Ставки</p>
+            <h2>Керування ставками напрямків</h2>
+          </div>
+          <form class="admin-rule-form" id="adminRatesForm">
+            <label class="field full">
+              <span>JSON перевизначень</span>
+              <textarea name="overrides" id="adminRateOverrides" rows="12" spellcheck="false"></textarea>
+            </label>
+            <button class="primary-button" type="submit">Зберегти ставки</button>
+          </form>
+        </section>
+
+        <section class="panel admin-panel">
+          <div class="section-heading">
+            <p class="eyebrow">Шаблони</p>
+            <h2>Шаблони місяців</h2>
+          </div>
+          <form class="admin-rule-form" id="adminTemplatesForm">
+            <label class="field full">
+              <span>JSON шаблонів</span>
+              <textarea name="templates" id="adminTemplatesJson" rows="10" spellcheck="false"></textarea>
+            </label>
+            <button class="primary-button" type="submit">Зберегти шаблони</button>
+          </form>
+        </section>
+
+        <section class="panel admin-panel">
+          <div class="section-heading">
+            <p class="eyebrow">Звірка</p>
+            <h2>Звірити з розрахунковим листом</h2>
+          </div>
+          <form class="admin-rule-form" id="adminPayslipForm">
+            <label class="field"><span>Калькулятор</span><select name="calculator"><option value="service">Оператор сервісу</option><option value="supervisor">СВ</option><option value="level4">4 лвл</option><option value="xd">ХД</option><option value="video">Відеоверифікатор</option><option value="iron">IRON</option></select></label>
+            <label class="field"><span>Місяць</span><select name="month" id="adminPayslipMonth"></select></label>
+            <label class="field"><span>Графік</span><select name="workSchedule"><option value="2/2">2/2</option><option value="5/2">5/2</option></select></label>
+            <label class="field"><span>Години</span><input name="actualHours" type="number" step="0.5" /></label>
+            <label class="field"><span>Зона</span><input name="ratingZone" type="number" min="1" max="5" /></label>
+            <label class="field"><span>Рівень</span><select name="level"><option value="level1">1-й</option><option value="level2">2-й</option><option value="level3">3-й</option></select></label>
+            <label class="field"><span>Нічні</span><input name="nightHours" type="number" step="0.5" /></label>
+            <label class="field"><span>Стаж, років</span><input name="tenureYears" type="number" min="0" max="15" step="1" /></label>
+            <label class="field"><span>Факт до податку</span><input name="expectedGross" type="number" step="0.01" /></label>
+            <label class="field"><span>Факт чистими</span><input name="expectedNet" type="number" step="0.01" /></label>
+            <button class="primary-button" type="submit">Звірити</button>
+          </form>
+          <div class="admin-table" id="adminPayslipResult"></div>
+        </section>
       </section>
 
       <section class="home-view" id="homeView" aria-labelledby="homeTitle">
@@ -193,18 +255,18 @@
         <div class="choice-grid">
           <a class="choice-card" href="/service" data-calculator-choice="service">
             <span>Оператор сервісу</span>
-            <strong>ЗП сервісу 2/2</strong>
-            <small>Рейтинг, рівень, нічні, X2, стаж</small>
+            <strong>ЗП сервісу 2/2 та 5/2</strong>
+            <small>Перемикач графіка, рейтинг, рівень, нічні, X2, стаж</small>
           </a>
           <a class="choice-card" href="/supervisor" data-calculator-choice="supervisor">
             <span>СВ</span>
-            <strong>ЗП СВ 2/2</strong>
-            <small>+15%, WOW-кейси, податки, стаж</small>
+            <strong>ЗП СВ 2/2 та 5/2</strong>
+            <small>Перемикач графіка, +15%, WOW-кейси, податки, стаж</small>
           </a>
           <a class="choice-card" href="/level4" data-calculator-choice="level4">
             <span>4 лвл</span>
-            <strong>ЗП 4 лвл 2/2</strong>
-            <small>Окремі ставки рейтингу, рівня, податки, стаж</small>
+            <strong>ЗП 4 лвл 2/2 та 5/2</strong>
+            <small>3 зони рейтингу, перемикач графіка, податки, стаж</small>
           </a>
           <a class="choice-card" href="/xd" data-calculator-choice="xd">
             <span>ХД</span>
@@ -507,6 +569,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <script type="module" src="./app.js?v=46"></script>
+    <script type="module" src="./app.js?v=51"></script>
   </body>
 </html>

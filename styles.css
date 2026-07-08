@@ -636,19 +636,32 @@ h2 {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
-  min-height: 46px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 0 12px;
   color: var(--ink);
   background: #ffffff;
   outline: none;
 }
 
+.field input,
+.field select {
+  min-height: 46px;
+  padding: 0 12px;
+}
+
+.field textarea {
+  min-height: 180px;
+  padding: 12px;
+  resize: vertical;
+  font: 0.88rem/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px rgba(22, 106, 77, 0.13);
 }
@@ -1195,6 +1208,7 @@ h2 {
 :root[data-theme="dark"] .summary-strip > div,
 :root[data-theme="dark"] .field input,
 :root[data-theme="dark"] .field select,
+:root[data-theme="dark"] .field textarea,
 :root[data-theme="dark"] .segment,
 :root[data-theme="dark"] .toggle-field,
 :root[data-theme="dark"] .breakdown-row,
@@ -1388,6 +1402,7 @@ h2 {
   :root:not([data-theme]) .summary-strip > div,
   :root:not([data-theme]) .field input,
   :root:not([data-theme]) .field select,
+  :root:not([data-theme]) .field textarea,
   :root:not([data-theme]) .segment,
   :root:not([data-theme]) .toggle-field,
   :root:not([data-theme]) .breakdown-row,

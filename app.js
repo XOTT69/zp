@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=46";
+} from "./calculator.js?v=51";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
@@ -21,6 +21,12 @@ const adminResetStatsButton = document.querySelector("#adminResetStatsButton");
 const adminRuleForm = document.querySelector("#adminRuleForm");
 const adminRuleMonth = document.querySelector("#adminRuleMonth");
 const adminPaymentRules = document.querySelector("#adminPaymentRules");
+const adminVersionForm = document.querySelector("#adminVersionForm");
+const adminRatesForm = document.querySelector("#adminRatesForm");
+const adminTemplatesForm = document.querySelector("#adminTemplatesForm");
+const adminPayslipForm = document.querySelector("#adminPayslipForm");
+const adminPayslipMonth = document.querySelector("#adminPayslipMonth");
+const adminPayslipResult = document.querySelector("#adminPayslipResult");
 const adminStorageNotice = document.querySelector("#adminStorageNotice");
 const adminStats = document.querySelector("#adminStats");
 const adminRoles = document.querySelector("#adminRoles");
@@ -60,7 +66,10 @@ let selectedRatingZone = 1;
 let currentResult = null;
 let accessSession = null;
 let lastTrackedView = "";
+let basePayrollPayload = null;
 let lastPayrollPayload = null;
+let activeSettings = {};
+let adminSettingsState = {};
 
 init();
 
@@ -69,7 +78,7 @@ async function init() {
   removeStaleStaticOptions();
   accessForm.addEventListener("submit", handleAccessSubmit);
   form.addEventListener("input", update);
-  form.addEventListener("change", update);
+  form.addEventListener("change", handleFormChange);
   ratingZoneGroup.addEventListener("click", handleRatingClick);
   resetButton.addEventListener("click", reset);
   copyButton.addEventListener("click", copySummary);
@@ -81,6 +90,10 @@ async function init() {
   adminResetStatsButton.addEventListener("click", resetAdminStats);
   adminRuleForm.addEventListener("submit", saveAdminPaymentRule);
   adminPaymentRules.addEventListener("click", deleteAdminPaymentRule);
+  adminVersionForm.addEventListener("submit", saveAdminVersion);
+  adminRatesForm.addEventListener("submit", saveAdminRates);
+  adminTemplatesForm.addEventListener("submit", saveAdminTemplates);
+  adminPayslipForm.addEventListener("submit", compareAdminPayslip);
   addScenarioButton.addEventListener("click", addScenario);
   clearScenariosButton.addEventListener("click", clearScenarios);
   scenarioList.addEventListener("click", handleScenarioClick);
@@ -100,7 +113,8 @@ async function hydrateSession() {
     const data = await response.json();
     if (!data.authenticated) return;
     accessSession = data.session;
-    lastPayrollPayload = await applyRemotePaymentRules(data.payroll);
+    basePayrollPayload = data.payroll;
+    lastPayrollPayload = await applyRemoteConfig(basePayrollPayload);
     configurePayrollData(lastPayrollPayload);
     renderSelects();
   } catch {
@@ -240,7 +254,8 @@ async function handleAccessSubmit(event) {
     }
 
     accessSession = data.session;
-    lastPayrollPayload = await applyRemotePaymentRules(data.payroll);
+    basePayrollPayload = data.payroll;
+    lastPayrollPayload = await applyRemoteConfig(basePayrollPayload);
     configurePayrollData(lastPayrollPayload);
     renderSelects();
     accessForm.reset();
@@ -297,6 +312,11 @@ function renderSelects() {
   ).join("");
   if (adminRuleMonth) {
     adminRuleMonth.innerHTML = MONTHS.map(
+      (month) => `<option value="${month.name}">${month.name}</option>`
+    ).join("");
+  }
+  if (adminPayslipMonth) {
+    adminPayslipMonth.innerHTML = MONTHS.map(
       (month) => `<option value="${month.name}">${month.name}</option>`
     ).join("");
   }
@@ -389,6 +409,27 @@ function update() {
   renderScenarios();
 }
 
+function handleFormChange(event) {
+  if (event.target?.name === "month") {
+    applyMonthTemplate(calculatorType, event.target.value);
+  }
+  update();
+}
+
+function applyMonthTemplate(type, month) {
+  const template = activeSettings.templates?.[type]?.[month];
+  if (!template) return;
+  const merged = {
+    ...readInputs(),
+    ...template,
+    month
+  };
+  selectedRatingZone = clampRatingZone(merged.ratingZone ?? selectedRatingZone, type);
+  fillForm(merged);
+  renderRatingButtons(selectedRatingZone);
+  showStatus("Шаблон місяця застосовано");
+}
+
 function readInputs() {
   const data = new FormData(form);
   const defaults = getDefaultInputs(calculatorType);
@@ -456,6 +497,12 @@ function renderValidation(result) {
 function buildValidationMessages(result) {
   const messages = [];
   const input = result.input;
+  const version = activeSettings.version;
+
+  if (version?.label) {
+    const updated = version.updatedAt ? ` · оновлено ${version.updatedAt}` : "";
+    messages.push({ tone: "success", text: `${version.label}${updated}` });
+  }
 
   if (input.actualHours > 240) {
     messages.push({ tone: "warning", text: "Фактичні години виглядають дуже високими. Перевірте, чи це не помилка вводу." });
@@ -517,6 +564,18 @@ function formulaRows(result) {
     ? `${formatCurrency(result.levelBonus)} до податку (${formatCurrency(result.levelBonus * (1 - CALCULATORS[calculatorType].taxRate))} чистими)`
     : formatCurrency(result.levelBonus);
   const rows = [
+    {
+      label: "Версія правил",
+      formula: `${activeSettings.version?.label ?? "Базові правила"}${activeSettings.version?.updatedAt ? `, оновлено ${activeSettings.version.updatedAt}` : ""}`
+    },
+    {
+      label: "Графік і норма",
+      formula: `${i.workSchedule ?? "2/2"}, ${i.month}: ${result.normHours} год`
+    },
+    {
+      label: "Податок",
+      formula: isGrossCalculator() ? `${formatPercent(CALCULATORS[calculatorType].taxRate)} від нарахованої суми` : "Суми введені чистими, податок показано орієнтовно"
+    },
     {
       label: "Години в розрахунку",
       formula: `${roundMoney(i.actualHours)} + ${result.testHours} = ${roundMoney(result.effectiveHours)}`
@@ -1099,21 +1158,26 @@ async function renderAdminPanel() {
   adminRoles.innerHTML = "";
   adminRecent.innerHTML = "";
   adminPaymentRules.innerHTML = "";
+  adminPayslipResult.innerHTML = "";
 
   try {
-    const [statsResponse, rulesResponse] = await Promise.all([
+    const [statsResponse, rulesResponse, settingsResponse] = await Promise.all([
       fetch("/api/admin/stats", { credentials: "same-origin" }),
-      fetch("/api/admin/payment-rules", { credentials: "same-origin" })
+      fetch("/api/admin/payment-rules", { credentials: "same-origin" }),
+      fetch("/api/admin/settings", { credentials: "same-origin" })
     ]);
     const data = await statsResponse.json();
     const rulesData = await rulesResponse.json();
+    const settingsData = await settingsResponse.json();
     if (!statsResponse.ok) throw new Error(data.error || "Не вдалося отримати статистику.");
     if (!rulesResponse.ok) throw new Error(rulesData.error || "Не вдалося отримати правила виплат.");
+    if (!settingsResponse.ok) throw new Error(settingsData.error || "Не вдалося отримати налаштування.");
 
     renderAdminStats(data.stats);
     renderAdminRoles(data.roles, data.calculators);
     renderAdminRecent(data.stats.recent);
     renderAdminPaymentRules(rulesData.rules);
+    renderAdminSettings(settingsData.settings);
   } catch (error) {
     adminStorageNotice.textContent = error.message || "Не вдалося завантажити адмін-панель.";
   }
@@ -1221,6 +1285,177 @@ function renderAdminPaymentRules(rules = {}) {
     .join("");
 }
 
+function renderAdminSettings(settings = {}) {
+  adminSettingsState = {
+    version: settings.version ?? {},
+    overrides: settings.overrides ?? {},
+    templates: settings.templates ?? {}
+  };
+
+  if (adminVersionForm) {
+    adminVersionForm.elements.label.value = adminSettingsState.version.label ?? "";
+    adminVersionForm.elements.updatedAt.value = adminSettingsState.version.updatedAt ?? "";
+    adminVersionForm.elements.note.value = adminSettingsState.version.note ?? "";
+  }
+  if (adminRatesForm) {
+    adminRatesForm.elements.overrides.value = prettyJson(adminSettingsState.overrides);
+    adminRatesForm.elements.overrides.placeholder = prettyJson({
+      service: {
+        salary: 12497,
+        taxRate: 0.23,
+        ratingBonusByZone: { "1": 23062, "2": 20080 },
+        levelBonusByLevelAndZone: { level3: { "1": 7234, "2": 3617, "3": 0 } }
+      }
+    });
+  }
+  if (adminTemplatesForm) {
+    adminTemplatesForm.elements.templates.value = prettyJson(adminSettingsState.templates);
+    adminTemplatesForm.elements.templates.placeholder = prettyJson({
+      iron: {
+        Травень: {
+          workSchedule: "2/2",
+          actualHours: 137,
+          nightHours: 39,
+          ratingZone: 2,
+          level: "level2"
+        }
+      }
+    });
+  }
+}
+
+async function saveAdminVersion(event) {
+  event.preventDefault();
+  const data = new FormData(adminVersionForm);
+  await saveAdminSettings({
+    ...adminSettingsState,
+    version: {
+      label: data.get("label"),
+      updatedAt: data.get("updatedAt"),
+      note: data.get("note")
+    }
+  }, "Версію правил збережено");
+}
+
+async function saveAdminRates(event) {
+  event.preventDefault();
+  try {
+    await saveAdminSettings({
+      ...adminSettingsState,
+      overrides: JSON.parse(adminRatesForm.elements.overrides.value || "{}")
+    }, "Ставки збережено");
+  } catch {
+    showStatus("JSON ставок має помилку");
+  }
+}
+
+async function saveAdminTemplates(event) {
+  event.preventDefault();
+  try {
+    await saveAdminSettings({
+      ...adminSettingsState,
+      templates: JSON.parse(adminTemplatesForm.elements.templates.value || "{}")
+    }, "Шаблони місяців збережено");
+  } catch {
+    showStatus("JSON шаблонів має помилку");
+  }
+}
+
+async function saveAdminSettings(settings, successMessage) {
+  const response = await fetch("/api/admin/settings", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ settings })
+  });
+  if (!response.ok) {
+    showStatus("Не вдалося зберегти налаштування");
+    return;
+  }
+
+  const data = await response.json();
+  adminSettingsState = data.settings;
+  activeSettings = data.settings;
+  await refreshPayrollConfig();
+  showStatus(successMessage);
+  renderAdminPanel();
+}
+
+async function refreshPayrollConfig() {
+  const response = await fetch("/api/session", { credentials: "same-origin" });
+  const data = await response.json();
+  if (!response.ok || !data.authenticated) return;
+  basePayrollPayload = data.payroll;
+  lastPayrollPayload = await applyRemoteConfig(basePayrollPayload);
+  configurePayrollData(lastPayrollPayload);
+  renderSelects();
+  if (calculatorType) update();
+}
+
+async function compareAdminPayslip(event) {
+  event.preventDefault();
+  const data = new FormData(adminPayslipForm);
+  const type = data.get("calculator");
+  const defaults = getDefaultInputs(type);
+  const expectedGross = toNumber(data.get("expectedGross"));
+  const expectedNet = toNumber(data.get("expectedNet"));
+  const input = {
+    ...defaults,
+    month: data.get("month"),
+    workSchedule: data.get("workSchedule") || defaults.workSchedule,
+    actualHours: data.get("actualHours"),
+    testsHigh: false,
+    ratingZone: data.get("ratingZone"),
+    level: data.get("level"),
+    salary: defaults.salary,
+    nightHours: data.get("nightHours"),
+    holidayHours: 0,
+    doubleHours: 0,
+    wowCases: 0,
+    fines: 0,
+    taxiAmount: 0,
+    tenureYears: data.get("tenureYears"),
+    tenureHours: data.get("actualHours"),
+    firstHalfHours: defaults.firstHalfHours,
+    secondHalfHours: defaults.secondHalfHours,
+    ratingFirstPart: defaults.ratingFirstPart
+  };
+  const result = calculatePayroll(input, type);
+  const grossDiff = result.totalGross - expectedGross;
+  const netDiff = result.totalPay - expectedNet;
+  const grossTone = Math.abs(grossDiff) < 0.02 ? "success" : "warning";
+  const netTone = Math.abs(netDiff) < 0.02 ? "success" : "warning";
+
+  adminPayslipResult.innerHTML = `
+    <article class="admin-row">
+      <div>
+        <strong>${CALCULATORS[type]?.title ?? type}</strong>
+        <small>${result.input.month}, ${result.input.workSchedule}, зона ${result.input.ratingZone}, ${roundMoney(result.effectiveHours)} год</small>
+      </div>
+      <small>
+        Розрахунок: ${formatCurrency(result.totalGross)} з податком / ${formatCurrency(result.totalPay)} чистими<br>
+        Факт: ${formatCurrency(expectedGross)} з податком / ${formatCurrency(expectedNet)} чистими
+      </small>
+      <span class="status-pill ${Math.abs(grossDiff) < 0.02 && Math.abs(netDiff) < 0.02 ? "" : "is-warning"}">
+        різниця ${formatCurrency(netDiff)}
+      </span>
+    </article>
+    <div class="notice ${grossTone}">До податку: різниця ${formatCurrency(grossDiff)}</div>
+    <div class="notice ${netTone}">Чистими: різниця ${formatCurrency(netDiff)}</div>
+    <article class="admin-row">
+      <div>
+        <strong>Розкладка калькулятора</strong>
+        <small>Оклад/рейтинг/доплати окремо від стажу</small>
+      </div>
+      <small>
+        ЗП: ${formatCurrency(result.baseGross)} з податком / ${formatCurrency(result.basePay)} чистими<br>
+        Стаж: ${formatCurrency(result.tenureGross)} з податком / ${formatCurrency(result.tenurePay)} чистими<br>
+        Податок: ${formatCurrency(result.tax)}
+      </small>
+    </article>
+  `;
+}
+
 async function saveAdminPaymentRule(event) {
   event.preventDefault();
   const data = new FormData(adminRuleForm);
@@ -1324,21 +1559,98 @@ async function applyRemotePaymentRules(payroll) {
 }
 
 async function reloadPaymentRules() {
-  if (!lastPayrollPayload) return;
+  if (!basePayrollPayload && !lastPayrollPayload) return;
+  const sourcePayload = basePayrollPayload ?? lastPayrollPayload;
   const basePayload = {
-    ...lastPayrollPayload,
+    ...sourcePayload,
     config: {
-      ...lastPayrollPayload.config,
+      ...sourcePayload.config,
       calculators: Object.fromEntries(
-        Object.entries(lastPayrollPayload.config.calculators).map(([key, config]) => [
+        Object.entries(sourcePayload.config.calculators).map(([key, config]) => [
           key,
           { ...config, paymentMonthlyRules: undefined }
         ])
       )
     }
   };
-  lastPayrollPayload = await applyRemotePaymentRules(basePayload);
+  lastPayrollPayload = await applyRemoteConfig(basePayload);
   configurePayrollData(lastPayrollPayload);
+}
+
+async function applyRemoteConfig(payroll) {
+  const withSettings = await applyRemoteSettings(payroll);
+  return applyRemotePaymentRules(withSettings);
+}
+
+async function applyRemoteSettings(payroll) {
+  try {
+    const response = await fetch("/api/settings", { credentials: "same-origin" });
+    const data = await response.json();
+    if (!response.ok) return payroll;
+    activeSettings = data.settings ?? {};
+    adminSettingsState = activeSettings;
+    return applyAdminSettings(payroll, activeSettings);
+  } catch {
+    activeSettings = {};
+    adminSettingsState = {};
+    return payroll;
+  }
+}
+
+function applyAdminSettings(payroll, settings = {}) {
+  const overrides = settings.overrides ?? {};
+  return {
+    ...payroll,
+    config: {
+      ...payroll.config,
+      rulesVersion: settings.version,
+      calculators: Object.fromEntries(
+        Object.entries(payroll.config.calculators).map(([key, config]) => [
+          key,
+          mergeCalculatorOverride(config, overrides[key])
+        ])
+      )
+    }
+  };
+}
+
+function mergeCalculatorOverride(config, override = {}) {
+  if (!override || typeof override !== "object") return config;
+  const next = { ...config };
+  if (override.tenureBase !== undefined) next.tenureBase = Number(override.tenureBase);
+  if (override.taxRate !== undefined) next.taxRate = Number(override.taxRate);
+  if (override.salary !== undefined) {
+    next.defaultInputs = { ...next.defaultInputs, salary: Number(override.salary) };
+  }
+  if (override.ratingBonusByZone) {
+    next.ratingBonusByZone = mergeNumberMap(next.ratingBonusByZone, override.ratingBonusByZone);
+  }
+  if (override.levelBonusByLevel) {
+    next.levelBonusByLevel = mergeNumberMap(next.levelBonusByLevel, override.levelBonusByLevel);
+  }
+  if (override.levelBonusByLevelAndZone) {
+    next.levelBonusByLevelAndZone = mergeNestedNumberMap(next.levelBonusByLevelAndZone, override.levelBonusByLevelAndZone);
+  }
+  if (override.scheduleMonthHours) {
+    next.scheduleMonthHours = mergeNestedNumberMap(next.scheduleMonthHours, override.scheduleMonthHours);
+  }
+  return next;
+}
+
+function mergeNumberMap(base = {}, override = {}) {
+  return Object.fromEntries(
+    Object.entries({ ...base, ...override }).map(([key, value]) => [key, Number(value)])
+  );
+}
+
+function mergeNestedNumberMap(base = {}, override = {}) {
+  const next = { ...base };
+  Object.entries(override).forEach(([key, value]) => {
+    next[key] = value && typeof value === "object" && !Array.isArray(value)
+      ? mergeNumberMap(base[key], value)
+      : Number(value);
+  });
+  return next;
 }
 
 function applyPaymentRules(payroll, rules = {}) {
@@ -1379,6 +1691,15 @@ function formatDateTime(value) {
     dateStyle: "short",
     timeStyle: "short"
   }).format(new Date(value));
+}
+
+function prettyJson(value) {
+  return JSON.stringify(value ?? {}, null, 2);
+}
+
+function toNumber(value) {
+  const number = Number(String(value ?? "").replace(",", "."));
+  return Number.isFinite(number) ? number : 0;
 }
 
 function applySavedTheme() {

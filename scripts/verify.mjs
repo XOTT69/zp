@@ -67,6 +67,23 @@ const supervisorResult = calculatePayroll({
   tenureYears: 8
 }, "supervisor");
 
+const supervisor52Result = calculatePayroll({
+  month: "Липень",
+  workSchedule: "5/2",
+  actualHours: 184,
+  testsHigh: false,
+  ratingZone: 3,
+  level: "level2",
+  salary: 46560,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 1
+}, "supervisor");
+
 const level4Result = calculatePayroll({
   month: "Червень",
   actualHours: 157.5,
@@ -466,6 +483,10 @@ const checks = [
   ["supervisor.tenurePay", supervisorResult.tenurePay, 23708.888],
   ["supervisor.totalPay", supervisorResult.totalPay, 76236.888],
   ["supervisor.totalGross", supervisorResult.totalGross, 99008.945455],
+  ["supervisor52.normHours", supervisor52Result.normHours, 184],
+  ["supervisor52.ratingBonus", supervisor52Result.ratingBonus, 14330],
+  ["supervisor52.levelBonus", supervisor52Result.levelBonus, 3620],
+  ["supervisor52.totalPay", supervisor52Result.totalPay, 52105.515],
   ["level4.normHours", level4Result.normHours, 165],
   ["level4.ratingBonus", level4Result.ratingBonus, 34765],
   ["level4.levelBonus", level4Result.levelBonus, 7234],
