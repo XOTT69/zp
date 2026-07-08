@@ -14,6 +14,14 @@ const form = document.querySelector("#calculatorForm");
 const accessView = document.querySelector("#accessView");
 const accessForm = document.querySelector("#accessForm");
 const accessError = document.querySelector("#accessError");
+const adminView = document.querySelector("#adminView");
+const adminButton = document.querySelector("#adminButton");
+const adminRefreshButton = document.querySelector("#adminRefreshButton");
+const adminResetStatsButton = document.querySelector("#adminResetStatsButton");
+const adminStorageNotice = document.querySelector("#adminStorageNotice");
+const adminStats = document.querySelector("#adminStats");
+const adminRoles = document.querySelector("#adminRoles");
+const adminRecent = document.querySelector("#adminRecent");
 const monthSelect = document.querySelector("#month");
 const levelSelect = document.querySelector("#level");
 const ratingZoneGroup = document.querySelector("#ratingZoneGroup");
@@ -41,13 +49,14 @@ const toast = document.querySelector("#toast");
 const MAX_SCENARIOS = 6;
 const THEME_STORAGE_KEY = "zp-theme";
 const APP_EYEBROW = "Калькулятор ЗП для графіка 2/2";
-const ACTIVE_ACCESS_ROLES = new Set(["operator", "supervisor", "level4", "xd", "video", "iron"]);
+const ACTIVE_ACCESS_ROLES = new Set(["admin", "operator", "supervisor", "level4", "xd", "video", "iron"]);
 const ACTIVE_CALCULATOR_KEYS = new Set(["service", "supervisor", "level4", "xd", "video", "iron"]);
 
 let calculatorType = null;
 let selectedRatingZone = 1;
 let currentResult = null;
 let accessSession = null;
+let lastTrackedView = "";
 
 init();
 
@@ -63,6 +72,9 @@ async function init() {
   printButton.addEventListener("click", printReport);
   logoutButton.addEventListener("click", logout);
   themeToggle.addEventListener("click", toggleTheme);
+  adminButton.addEventListener("click", () => navigateTo("/admin"));
+  adminRefreshButton.addEventListener("click", renderAdminPanel);
+  adminResetStatsButton.addEventListener("click", resetAdminStats);
   addScenarioButton.addEventListener("click", addScenario);
   clearScenariosButton.addEventListener("click", clearScenarios);
   scenarioList.addEventListener("click", handleScenarioClick);
@@ -98,32 +110,49 @@ function renderRoute() {
     return;
   }
 
-  calculatorType = getRouteType();
+  const isAdminRoute = window.location.pathname === "/admin";
+  if (isAdminRoute && !accessSession.isAdmin) {
+    navigateTo(`/${firstAllowedCalculator()}`);
+    return;
+  }
+
+  calculatorType = isAdminRoute ? null : getRouteType();
   if (calculatorType && !canAccessCalculator(calculatorType)) {
     navigateTo(`/${firstAllowedCalculator()}`);
     return;
   }
 
-  const isHome = calculatorType === null;
+  const isHome = calculatorType === null && !isAdminRoute;
 
   accessView.hidden = true;
+  adminView.hidden = !isAdminRoute;
   homeView.hidden = !isHome;
-  calculatorView.hidden = isHome;
-  summaryStrip.hidden = isHome;
-  modeSwitcher.hidden = isHome;
-  resetButton.hidden = isHome;
-  copyButton.hidden = isHome;
-  printButton.hidden = isHome;
+  calculatorView.hidden = isHome || isAdminRoute;
+  summaryStrip.hidden = isHome || isAdminRoute;
+  modeSwitcher.hidden = isHome || isAdminRoute;
+  resetButton.hidden = isHome || isAdminRoute;
+  copyButton.hidden = isHome || isAdminRoute;
+  printButton.hidden = isHome || isAdminRoute;
   homeButton.hidden = isHome;
+  adminButton.hidden = !accessSession.isAdmin || isAdminRoute;
   logoutButton.hidden = false;
   roleBadge.hidden = false;
   roleBadge.textContent = accessSession.label;
   renderAllowedChoices();
   renderModeSwitcher();
 
+  if (isAdminRoute) {
+    document.querySelector("#appTitle").textContent = "Адмін панель";
+    document.querySelector("#appEyebrow").textContent = APP_EYEBROW;
+    renderAdminPanel();
+    trackView("admin");
+    return;
+  }
+
   if (isHome) {
     document.querySelector("#appTitle").textContent = "Калькулятор ЗП";
     document.querySelector("#appEyebrow").textContent = APP_EYEBROW;
+    trackView("home");
     return;
   }
 
@@ -142,11 +171,13 @@ function renderRoute() {
   renderModeLabels();
   update();
   renderScenarios();
+  trackView(calculatorType);
 }
 
 function renderAccessGate() {
   removeStaleStaticOptions();
   accessView.hidden = false;
+  adminView.hidden = true;
   homeView.hidden = true;
   calculatorView.hidden = true;
   summaryStrip.hidden = true;
@@ -155,6 +186,7 @@ function renderAccessGate() {
   copyButton.hidden = true;
   printButton.hidden = true;
   homeButton.hidden = true;
+  adminButton.hidden = true;
   logoutButton.hidden = true;
   roleBadge.hidden = true;
   document.querySelector("#appTitle").textContent = "Калькулятор ЗП";
@@ -204,7 +236,7 @@ async function handleAccessSubmit(event) {
     configurePayrollData(data.payroll);
     renderSelects();
     accessForm.reset();
-    navigateTo(`/${firstAllowedCalculator()}`);
+    navigateTo(accessSession.isAdmin ? "/admin" : `/${firstAllowedCalculator()}`);
   } catch {
     accessError.textContent = "Не вдалося увійти. Перевірте Vercel API або інтернет.";
   } finally {
@@ -214,6 +246,7 @@ async function handleAccessSubmit(event) {
 
 async function logout() {
   accessSession = null;
+  lastTrackedView = "";
   await fetch("/api/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
   navigateTo("/login");
   renderRoute();
@@ -284,7 +317,7 @@ function renderModeFields() {
 function renderModeLabels() {
   const taxLabel = `Податок ${formatPercent(CALCULATORS[calculatorType].taxRate)}`;
   setText("#totalMainLabel", "Загальна сума до виплати");
-  setText("#totalGrossLabel", isGrossCalculator() ? "Разом до податку" : "Орієнтовно до податку");
+  setText("#totalGrossLabel", isGrossCalculator() ? "Разом з податком" : "Орієнтовно з податком");
   setText("#totalTaxLabel", taxLabel);
   setText("#baseResultLabel", isGrossCalculator() ? "ЗП чистими" : "До виплати ЗП");
   setText("#tenureResultLabel", isGrossCalculator() ? "Стаж чистими" : "Премія стаж");
@@ -292,35 +325,18 @@ function renderModeLabels() {
 }
 
 function renderRatingButtons(activeZone) {
-  const config = CALCULATORS[calculatorType];
-  const maxZone = getMaxRatingZone(config);
-  const clampedZone = Math.min(activeZone, maxZone);
-  if (clampedZone !== activeZone) {
-    selectedRatingZone = clampedZone;
-  }
   ratingZoneGroup.innerHTML = [1, 2, 3, 4, 5]
-    .filter((zone) => zone <= maxZone)
     .map(
       (zone) => `
         <button
-          class="segment ${zone === clampedZone ? "is-active" : ""}"
+          class="segment ${zone === activeZone ? "is-active" : ""}"
           data-zone="${zone}"
           type="button"
-          aria-pressed="${zone === clampedZone}"
+          aria-pressed="${zone === activeZone}"
         >${zone}</button>
       `
     )
     .join("");
-}
-
-function getMaxRatingZone(config) {
-  if (!config) return 5;
-  // maxRatingZone розраховується в calculator.js при configurePayrollData
-  if (typeof config.maxRatingZone === "number") return config.maxRatingZone;
-  // Запасний варіант: обчислюємо вручну з ratingBonusByZone
-  const zones = Object.entries(config.ratingBonusByZone ?? {});
-  const activeZones = zones.filter(([, v]) => v > 0).map(([k]) => Number(k));
-  return activeZones.length > 0 ? Math.max(...activeZones) : 5;
 }
 
 function handleRatingClick(event) {
@@ -632,7 +648,7 @@ function renderPaymentSchedule(result) {
 
 function renderReport(result) {
   const config = CALCULATORS[calculatorType];
-  const totalGrossLabel = isGrossCalculator() ? "Разом до податку (ЗП + стаж)" : "Орієнтовно до податку";
+  const totalGrossLabel = isGrossCalculator() ? "Разом з податком (ЗП + стаж)" : "Орієнтовно з податком";
   const rows = [
     ["Тип", config.title],
     ["Місяць", result.input.month],
@@ -679,14 +695,17 @@ function renderReport(result) {
 function serviceRows(result) {
   return [
     ["ЗП чистими", result.basePay],
-    ["Нічні", result.nightPay],
-    ["Святкові", result.holidayPay],
-    ["Оплата X2", result.doublePay],
-    ["Монобрат / таксі", result.taxiCompensation],
-    [`Премія за стаж чистими ${Math.round(result.tenureRate * 100)}%`, result.tenurePay],
-    ["Разом до виплати (ЗП + стаж)", result.totalPay],
+    ...optionalMoneyRows([
+      ["Нічні", result.nightPay],
+      ["Святкові", result.holidayPay],
+      ["Оплата X2", result.doublePay],
+      ["Монобрат / таксі", result.taxiCompensation],
+      [CALCULATORS[calculatorType]?.deductionLabel ?? "Штрафи", -result.input.fines],
+      [`Стаж чистими ${Math.round(result.tenureRate * 100)}%`, result.tenurePay]
+    ]),
+    ["Разом чистими (ЗП + стаж)", result.totalPay],
     [`Орієнтовний податок ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.tax],
-    ["Орієнтовно до податку", result.totalGross]
+    ["Орієнтовно з податком", result.totalGross]
   ];
 }
 
@@ -695,16 +714,26 @@ function grossRows(result) {
     ["ЗП до податку", result.baseGross],
     [`Податок із ЗП ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.baseTax],
     ["ЗП чистими", result.basePay],
-    ...(hasWowBonus() ? [["WOW-кейси", result.wowBonus]] : []),
-    ...(result.taxableBonus > 0 ? [["Додаткові бонуси до податку", result.taxableBonus]] : []),
-    ...(result.input.fines > 0 ? [[CALCULATORS[calculatorType]?.deductionLabel ?? "Штрафи", -result.input.fines]] : []),
-    [`Стаж до податку ${Math.round(result.tenureRate * 100)}%`, result.tenureGross],
-    [`Податок зі стажу ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.tenureTax],
-    ["Стаж чистими", result.tenurePay],
-    ["Разом до виплати (ЗП + стаж)", result.totalPay],
-    ["Разом до податку (ЗП + стаж)", result.totalGross]
+    ...optionalMoneyRows([
+      ["Нічні до податку", result.nightPay],
+      ["Святкові до податку", result.holidayPay],
+      ["Оплата X2 до податку", result.doublePay],
+      ["Монобрат / таксі", result.taxiCompensation],
+      ["WOW-кейси чистими", hasWowBonus() ? result.wowBonus : 0],
+      ["Додаткові бонуси до податку", result.taxableBonus],
+      [CALCULATORS[calculatorType]?.deductionLabel ?? "Штрафи", -result.input.fines],
+      [`Стаж з податком ${Math.round(result.tenureRate * 100)}%`, result.tenureGross],
+      [`Податок зі стажу ${formatPercent(CALCULATORS[calculatorType].taxRate)}`, result.tenureTax],
+      ["Стаж чистими", result.tenurePay]
+    ]),
+    ["Разом чистими (ЗП + стаж)", result.totalPay],
+    ["Разом з податком (ЗП + стаж)", result.totalGross]
   ];
   return rows;
+}
+
+function optionalMoneyRows(rows) {
+  return rows.filter(([, value]) => Math.abs(Number(value) || 0) > 0.004);
 }
 
 async function copySummary() {
@@ -715,6 +744,7 @@ async function copySummary() {
 
   try {
     await navigator.clipboard.writeText(summary);
+    trackEvent("copy");
     showStatus("Скопійовано в буфер обміну");
   } catch {
     showStatus("Не вдалося скопіювати");
@@ -723,14 +753,14 @@ async function copySummary() {
 
 function printReport() {
   if (!calculatorType) return;
+  trackEvent("pdf");
   window.print();
 }
 
 function addScenario() {
   if (!calculatorType || !currentResult) return;
   const scenarios = loadScenarios(calculatorType);
-  const willReplace = scenarios.length >= MAX_SCENARIOS;
-  if (willReplace) {
+  if (scenarios.length >= MAX_SCENARIOS) {
     const shouldReplace = window.confirm(`Можна зберегти максимум ${MAX_SCENARIOS} сценаріїв. Видалити найстаріший і додати новий?`);
     if (!shouldReplace) return;
   }
@@ -748,7 +778,7 @@ function addScenario() {
   scenarios.push(next);
   saveScenarios(calculatorType, scenarios.slice(-MAX_SCENARIOS));
   renderScenarios();
-  showStatus(willReplace ? "Найстаріший сценарій замінено" : "Сценарій додано");
+  showStatus(scenarios.length > MAX_SCENARIOS ? "Найстаріший сценарій замінено" : "Сценарій додано");
 }
 
 function clearScenarios() {
@@ -792,7 +822,7 @@ function renderScenarios() {
 }
 
 function buildTextReport(result, config) {
-  const totalGrossLabel = isGrossCalculator() ? "Разом до податку (ЗП + стаж)" : "Орієнтовно до податку";
+  const totalGrossLabel = isGrossCalculator() ? "Разом з податком (ЗП + стаж)" : "Орієнтовно з податком";
   return [
     `${config.title}, ${result.input.month}`,
     `Загальна сума до виплати: ${formatCurrency(result.totalPay)}`,
@@ -1001,6 +1031,160 @@ function renderScheduleOptions() {
       `
     )
     .join("");
+}
+
+async function renderAdminPanel() {
+  if (!accessSession?.isAdmin) return;
+  adminStorageNotice.textContent = "Завантажую статистику...";
+  adminStats.innerHTML = "";
+  adminRoles.innerHTML = "";
+  adminRecent.innerHTML = "";
+
+  try {
+    const response = await fetch("/api/admin/stats", { credentials: "same-origin" });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Не вдалося отримати статистику.");
+    }
+
+    renderAdminStats(data.stats);
+    renderAdminRoles(data.roles, data.calculators);
+    renderAdminRecent(data.stats.recent);
+  } catch (error) {
+    adminStorageNotice.textContent = error.message || "Не вдалося завантажити адмін-панель.";
+  }
+}
+
+function renderAdminStats(stats) {
+  const storageMessages = {
+    redis: "Статистика зберігається у Redis/Upstash і переживе redeploy.",
+    ephemeral: "Redis не підключений: статистика тимчасова і може скидатися після redeploy або холодного старту Vercel.",
+    "redis-unavailable": "Redis налаштований, але зараз недоступний. Показую тимчасову локальну статистику."
+  };
+  adminStorageNotice.textContent = storageMessages[stats.storage] || "Стан сховища статистики невідомий.";
+
+  const counters = stats.counters ?? {};
+  adminStats.innerHTML = [
+    ["Успішні входи", counters.loginSuccess],
+    ["Невдалі входи", counters.loginFailed],
+    ["Перегляди", counters.views],
+    ["Копії", counters.copies],
+    ["PDF", counters.pdfs],
+    ["Спроби входу", counters.loginAttempts]
+  ]
+    .map(
+      ([label, value]) => `
+        <article class="admin-stat">
+          <span>${label}</span>
+          <strong>${formatCount(value)}</strong>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderAdminRoles(roles, calculators) {
+  adminRoles.innerHTML = Object.entries(roles)
+    .map(([key, role]) => {
+      const allowed = role.allowedCalculators
+        .map((calculator) => calculators[calculator]?.title ?? calculator)
+        .join(", ");
+      const statusClass = role.configured ? "" : " is-warning";
+      const status = role.configured ? "env задано" : "env не задано";
+
+      return `
+        <article class="admin-row">
+          <div>
+            <strong>${role.label}</strong>
+            <small>${key}${role.isAdmin ? " · повний доступ" : ""}</small>
+          </div>
+          <small>${allowed || "Немає доступних калькуляторів"}</small>
+          <span class="status-pill${statusClass}">${status}</span>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderAdminRecent(recent) {
+  if (!recent?.length) {
+    adminRecent.innerHTML = `<p class="empty-state">Подій ще немає.</p>`;
+    return;
+  }
+
+  adminRecent.innerHTML = recent
+    .map(
+      (event) => `
+        <article class="admin-row">
+          <div>
+            <strong>${eventLabel(event.type)}</strong>
+            <small>${formatDateTime(event.at)}</small>
+          </div>
+          <small>Роль: ${event.role || "unknown"} · Розділ: ${event.calculator || event.path || "login"}</small>
+          <span class="status-pill">${event.success === false ? "відмова" : "ok"}</span>
+        </article>
+      `
+    )
+    .join("");
+}
+
+async function resetAdminStats() {
+  if (!accessSession?.isAdmin) return;
+  const shouldReset = window.confirm("Скинути всю статистику входів і переглядів?");
+  if (!shouldReset) return;
+
+  const response = await fetch("/api/admin/stats", {
+    method: "DELETE",
+    credentials: "same-origin"
+  });
+  if (response.ok) {
+    showStatus("Статистику скинуто");
+    renderAdminPanel();
+  } else {
+    showStatus("Не вдалося скинути статистику");
+  }
+}
+
+function trackView(calculator) {
+  const path = window.location.pathname;
+  const key = `${path}:${calculator}`;
+  if (lastTrackedView === key) return;
+  lastTrackedView = key;
+  trackEvent("view", { calculator, path });
+}
+
+function trackEvent(type, details = {}) {
+  if (!accessSession) return;
+  const path = details.path || window.location.pathname;
+  const calculator = details.calculator || calculatorType || (path === "/admin" ? "admin" : "home");
+  fetch("/api/track", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, calculator, path })
+  }).catch(() => {});
+}
+
+function eventLabel(type) {
+  return {
+    login_success: "Вхід",
+    login_failed: "Невдалий вхід",
+    view: "Перегляд",
+    copy: "Копія",
+    pdf: "PDF"
+  }[type] ?? type;
+}
+
+function formatCount(value) {
+  return new Intl.NumberFormat("uk-UA").format(Number(value || 0));
+}
+
+function formatDateTime(value) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("uk-UA", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(new Date(value));
 }
 
 function applySavedTheme() {

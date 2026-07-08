@@ -151,6 +151,10 @@ h2 {
   border-color: var(--line);
 }
 
+.danger-button {
+  color: var(--danger);
+}
+
 .role-pill {
   display: inline-flex;
   align-items: center;
@@ -261,89 +265,6 @@ h2 {
   font-weight: 700;
 }
 
-/* ── Telegram hint block on login page ── */
-.tg-hint {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  margin-top: 20px;
-  padding: 16px 18px;
-  border: 1.5px solid rgba(8, 122, 91, 0.32);
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent-soft) 0%, rgba(29, 99, 183, 0.07) 100%);
-  animation: tg-pulse 3.6s ease-in-out infinite;
-}
-
-@keyframes tg-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(8, 122, 91, 0); }
-  50%       { box-shadow: 0 0 0 6px rgba(8, 122, 91, 0.1); }
-}
-
-.tg-hint-icon {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--accent);
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-.tg-hint-body {
-  min-width: 0;
-}
-
-.tg-hint-title {
-  margin: 0 0 4px;
-  color: var(--accent-strong);
-  font-size: 0.95rem;
-  font-weight: 800;
-}
-
-.tg-hint-text {
-  margin: 0 0 10px;
-  color: var(--muted);
-  font-size: 0.85rem;
-  line-height: 1.45;
-}
-
-.tg-hint-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  border-radius: 8px;
-  padding: 8px 14px;
-  color: #ffffff;
-  background: var(--accent);
-  font-size: 0.88rem;
-  font-weight: 800;
-  text-decoration: none;
-  transition: background 160ms ease, transform 120ms ease;
-}
-
-.tg-hint-link:hover {
-  background: var(--accent-strong);
-  transform: translateY(-1px);
-}
-
-.tg-hint-at {
-  opacity: 0.88;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.tg-hint-arrow {
-  font-size: 0.9rem;
-}
-
-:root[data-theme="dark"] .tg-hint {
-  border-color: rgba(53, 192, 143, 0.28);
-  background: linear-gradient(135deg, rgba(53, 192, 143, 0.12) 0%, rgba(120, 174, 242, 0.08) 100%);
-}
-
 .summary-strip {
   display: grid;
   grid-template-columns: 1.6fr repeat(3, 1fr);
@@ -361,6 +282,105 @@ h2 {
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   gap: 18px;
   align-items: stretch;
+}
+
+.admin-view {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-stat,
+.admin-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--glass);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.admin-stat {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.admin-stat span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.admin-stat strong {
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  line-height: 1;
+}
+
+.admin-panel {
+  padding: 22px;
+}
+
+.admin-table {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-row {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 0.9fr;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.admin-row strong,
+.admin-row span,
+.admin-row small {
+  min-width: 0;
+}
+
+.admin-row small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.status-pill {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.status-pill.is-warning {
+  color: var(--amber);
+  background: rgba(185, 112, 12, 0.12);
 }
 
 .home-copy,
@@ -563,7 +583,7 @@ h2 {
 
 .segmented {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1147,6 +1167,10 @@ h2 {
   background: rgba(159, 45, 45, 0.18);
 }
 
+:root[data-theme="dark"] .admin-row {
+  background: rgba(16, 24, 23, 0.46);
+}
+
 @media (max-width: 860px) {
   .shell {
     width: min(100% - 20px, 720px);
@@ -1172,6 +1196,14 @@ h2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .admin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-row {
+    grid-template-columns: 1fr;
+  }
+
   .summary-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1183,6 +1215,7 @@ h2 {
   .form-grid,
   .result-grid,
   .payment-grid,
+  .admin-grid,
   .summary-strip {
     grid-template-columns: 1fr;
   }

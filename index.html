@@ -10,10 +10,10 @@
     />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; connect-src 'self'; font-src 'self'"
+      content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
-    <script src="./theme.js?v=30"></script>
-    <link rel="stylesheet" href="./styles.css?v=30" />
+    <script src="./theme.js?v=31"></script>
+    <link rel="stylesheet" href="./styles.css?v=31" />
   </head>
   <body>
     <div class="shell">
@@ -25,6 +25,7 @@
         <div class="top-actions">
           <span class="role-pill" id="roleBadge" hidden></span>
           <button class="ghost-button theme-toggle" id="themeToggle" type="button" aria-pressed="false">Темна</button>
+          <button class="ghost-button" id="adminButton" type="button">Адмін</button>
           <button class="ghost-button" id="homeButton" type="button">Розрахунки</button>
           <button class="ghost-button" id="resetButton" type="button">Скинути</button>
           <button class="primary-button" id="copyButton" type="button">Копія</button>
@@ -69,6 +70,7 @@
             <label>
               <span>Роль</span>
               <select name="role" id="accessRole">
+                <option value="admin">Адмін</option>
                 <option value="operator">Оператор</option>
                 <option value="supervisor">СВ</option>
                 <option value="level4">4 лвл</option>
@@ -84,19 +86,39 @@
             <button class="primary-button" type="submit">Увійти</button>
             <p class="access-error" id="accessError" role="alert"></p>
           </form>
+        </div>
+      </section>
 
-          <div class="tg-hint">
-            <div class="tg-hint-icon">✈️</div>
-            <div class="tg-hint-body">
-              <p class="tg-hint-title">Немає пароля?</p>
-              <p class="tg-hint-text">Звертайся в Telegram — видамо доступ і вислухаємо фітбеки.</p>
-              <a class="tg-hint-link" href="https://t.me/Xott68" target="_blank" rel="noopener noreferrer">
-                <span class="tg-hint-at">@Xott68</span>
-                <span class="tg-hint-arrow">→ Написати</span>
-              </a>
-            </div>
+      <section class="admin-view" id="adminView" aria-labelledby="adminTitle" hidden>
+        <div class="admin-head">
+          <div>
+            <p class="eyebrow">Адмін</p>
+            <h2 id="adminTitle">Панель керування</h2>
+          </div>
+          <div class="admin-actions">
+            <button class="ghost-button" id="adminRefreshButton" type="button">Оновити</button>
+            <button class="ghost-button danger-button" id="adminResetStatsButton" type="button">Скинути статистику</button>
           </div>
         </div>
+
+        <div class="notice info" id="adminStorageNotice"></div>
+        <div class="admin-grid" id="adminStats"></div>
+
+        <section class="panel admin-panel">
+          <div class="section-heading">
+            <p class="eyebrow">Доступи</p>
+            <h2>Ролі та калькулятори</h2>
+          </div>
+          <div class="admin-table" id="adminRoles"></div>
+        </section>
+
+        <section class="panel admin-panel">
+          <div class="section-heading">
+            <p class="eyebrow">Активність</p>
+            <h2>Останні події</h2>
+          </div>
+          <div class="admin-table" id="adminRecent"></div>
+        </section>
       </section>
 
       <section class="home-view" id="homeView" aria-labelledby="homeTitle">
@@ -409,6 +431,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <script type="module" src="./app.js?v=30"></script>
+    <script type="module" src="./app.js?v=31"></script>
   </body>
 </html>

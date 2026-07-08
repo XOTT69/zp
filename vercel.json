@@ -10,6 +10,10 @@
       "destination": "/api/page?path=/login"
     },
     {
+      "source": "/admin",
+      "destination": "/api/page?path=/admin"
+    },
+    {
       "source": "/service",
       "destination": "/api/page?path=/service"
     },

@@ -1,11 +1,11 @@
 import { readSessionFromCookie } from "./api/_auth.js";
 import { getSessionForRole } from "./api/_payroll-data.js";
 
-const APP_PATHS = new Set(["/", "/login", "/service", "/supervisor", "/level4", "/xd", "/video", "/iron"]);
+const APP_PATHS = new Set(["/", "/login", "/admin", "/service", "/supervisor", "/level4", "/xd", "/video", "/iron"]);
 const CALCULATOR_PATHS = new Set(["/service", "/supervisor", "/level4", "/xd", "/video", "/iron"]);
 
 export const config = {
-  matcher: ["/", "/login", "/service", "/supervisor", "/level4", "/xd", "/video", "/iron"]
+  matcher: ["/", "/login", "/admin", "/service", "/supervisor", "/level4", "/xd", "/video", "/iron"]
 };
 
 export default async function middleware(request) {
@@ -16,13 +16,19 @@ export default async function middleware(request) {
   const session = cookieSession ? getSessionForRole(cookieSession.role) : null;
 
   if (url.pathname === "/login") {
-    if (session) return Response.redirect(new URL(`/${session.allowedCalculators[0]}`, request.url));
+    if (session) return Response.redirect(new URL(session.isAdmin ? "/admin" : `/${session.allowedCalculators[0]}`, request.url));
     return;
   }
 
   if (url.pathname === "/") {
-    if (session) return Response.redirect(new URL(`/${session.allowedCalculators[0]}`, request.url));
+    if (session) return Response.redirect(new URL(session.isAdmin ? "/admin" : `/${session.allowedCalculators[0]}`, request.url));
     return Response.redirect(new URL("/login", request.url));
+  }
+
+  if (url.pathname === "/admin") {
+    if (!session) return Response.redirect(new URL("/login", request.url));
+    if (!session.isAdmin) return Response.redirect(new URL(`/${session.allowedCalculators[0]}`, request.url));
+    return;
   }
 
   if (CALCULATOR_PATHS.has(url.pathname)) {

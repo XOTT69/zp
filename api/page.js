@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { readSessionFromCookie } from "./_auth.js";
 import { getSessionForRole } from "./_payroll-data.js";
 
-const APP_PATHS = new Set(["/", "/login", "/service", "/supervisor", "/level4", "/xd", "/video", "/iron"]);
+const APP_PATHS = new Set(["/", "/login", "/admin", "/service", "/supervisor", "/level4", "/xd", "/video", "/iron"]);
 const CALCULATOR_PATHS = new Set(["/service", "/supervisor", "/level4", "/xd", "/video", "/iron"]);
 const ROOT_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -16,11 +16,16 @@ export default async function handler(req, res) {
   const session = cookieSession ? getSessionForRole(cookieSession.role) : null;
 
   if (pathname === "/login" && session) {
-    redirect(res, `/${session.allowedCalculators[0]}`);
+    redirect(res, session.isAdmin ? "/admin" : `/${session.allowedCalculators[0]}`);
     return;
   }
 
   if (pathname === "/") {
+    redirect(res, session ? session.isAdmin ? "/admin" : `/${session.allowedCalculators[0]}` : "/login");
+    return;
+  }
+
+  if (pathname === "/admin" && !session?.isAdmin) {
     redirect(res, session ? `/${session.allowedCalculators[0]}` : "/login");
     return;
   }
