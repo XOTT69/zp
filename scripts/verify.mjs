@@ -236,6 +236,26 @@ const iron52Result = calculatePayroll({
   secondHalfHours: 69.5
 }, "iron");
 
+const ironActualResult = calculatePayroll({
+  month: "Червень",
+  workSchedule: "2/2",
+  actualHours: 176,
+  testsHigh: false,
+  ratingZone: 3,
+  level: "level2",
+  salary: 22240,
+  nightHours: 18,
+  holidayHours: 0,
+  doubleHours: 1.5,
+  wowCases: 0,
+  fines: 280,
+  taxiAmount: 0,
+  tenureYears: 2,
+  tenureHours: 176,
+  firstHalfHours: 88,
+  secondHalfHours: 88
+}, "iron");
+
 const monthNormChecks = MONTHS.map((month) => [
   `month.${month.name}.hours`,
   month.hours,
@@ -306,21 +326,31 @@ const checks = [
   ["iron22.ratingBonus", iron22Result.ratingBonus, 31160],
   ["iron22.levelBonus", iron22Result.levelBonus, 2400],
   ["iron22.nightPay", iron22Result.nightPay, 970.472727],
-  ["iron22.baseGross", iron22Result.baseGross, 70635.927273],
-  ["iron22.basePay", iron22Result.basePay, 53969.664],
-  ["iron22.tenureGross", iron22Result.tenureGross, 6472.727273],
-  ["iron22.tenurePay", iron22Result.tenurePay, 4984],
-  ["iron22.totalGross", iron22Result.totalGross, 77108.654545],
-  ["iron22.totalPay", iron22Result.totalPay, 58953.664],
+  ["iron22.baseGross", iron22Result.baseGross, 70215.927273],
+  ["iron22.basePay", iron22Result.basePay, 54066.264],
+  ["iron22.tenureGross", iron22Result.tenureGross, 6473.939394],
+  ["iron22.tenurePay", iron22Result.tenurePay, 4984.933333],
+  ["iron22.totalGross", iron22Result.totalGross, 76689.866667],
+  ["iron22.totalPay", iron22Result.totalPay, 59051.197333],
   ["iron52.normHours", iron52Result.normHours, 176],
   ["iron52.ratingBonus", iron52Result.ratingBonus, 31160],
   ["iron52.levelBonus", iron52Result.levelBonus, 0],
   ["iron52.baseGross", iron52Result.baseGross, 46118.181818],
   ["iron52.basePay", iron52Result.basePay, 35511],
-  ["iron52.tenureGross", iron52Result.tenureGross, 5309.659091],
-  ["iron52.tenurePay", iron52Result.tenurePay, 4088.4375],
-  ["iron52.totalGross", iron52Result.totalGross, 51427.840909],
-  ["iron52.totalPay", iron52Result.totalPay, 39599.4375]
+  ["iron52.tenureGross", iron52Result.tenureGross, 5310.653409],
+  ["iron52.tenurePay", iron52Result.tenurePay, 4089.203125],
+  ["iron52.totalGross", iron52Result.totalGross, 51428.835227],
+  ["iron52.totalPay", iron52Result.totalPay, 39600.203125],
+  ["ironActual.baseGross", ironActualResult.baseGross, 60210.690909],
+  ["ironActual.basePay", ironActualResult.basePay, 46362.232],
+  ["ironActual.tenureGross", ironActualResult.tenureGross, 5697.066667],
+  ["ironActual.tenurePay", ironActualResult.tenurePay, 4386.741333],
+  ["ironActual.totalGross", ironActualResult.totalGross, 65907.757576],
+  ["ironActual.totalPay", ironActualResult.totalPay, 50748.973333],
+  ["ironActual.payment15", ironActualResult.paymentSchedule.midMonthPay, 19543.62],
+  ["ironActual.payment31", ironActualResult.paymentSchedule.monthEndPay, 8873.76],
+  ["ironActual.payment07", ironActualResult.paymentSchedule.nextMonthRatingPay, 17944.852],
+  ["ironActual.payment09", ironActualResult.paymentSchedule.tenurePay, 4386.741333]
 ];
 
 let failed = false;

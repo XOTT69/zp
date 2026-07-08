@@ -144,6 +144,7 @@ export function calculateServicePayroll(input, calculatorType = "service") {
     fines: values.fines,
     finesGross: values.fines,
     finesNet: 0,
+    basePay,
     tenurePay,
     wowBonus: 0,
     taxableBonus: 0,
@@ -256,6 +257,7 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
     fines: values.fines,
     finesGross,
     finesNet,
+    basePay,
     tenurePay,
     wowBonus,
     taxableBonus,
@@ -429,6 +431,10 @@ function calculatePaymentSchedule(values, parts) {
     return calculateVideoVerifierPaymentSchedule(values, parts);
   }
 
+  if (parts.paymentScheduleMode === "iron") {
+    return calculateIronPaymentSchedule(values, parts);
+  }
+
   const taxMultiplier = parts.isGrossMode ? 1 - parts.taxRate : 1;
   const firstHalfHours = Math.min(values.firstHalfHours, parts.effectiveHours);
   const secondHalfHours = Math.min(values.secondHalfHours, Math.max(0, parts.effectiveHours - firstHalfHours));
@@ -479,6 +485,46 @@ function calculatePaymentSchedule(values, parts) {
       level: levelPay,
       extras,
       settlement: fixedSettlement
+    }
+  };
+}
+
+function calculateIronPaymentSchedule(values, parts) {
+  const firstHalfHours = Math.min(values.firstHalfHours, parts.effectiveHours);
+  const secondHalfHours = Math.min(values.secondHalfHours, Math.max(0, parts.effectiveHours - firstHalfHours));
+  const midMonthPay = (parts.paymentHourlyRates?.firstHalfNet ?? 0) * firstHalfHours;
+  const monthEndPay = (parts.paymentHourlyRates?.secondHalfNet ?? 0) * secondHalfHours;
+  const fixedAdvance = Math.min(midMonthPay, (values.salary / parts.normHours) * (parts.normHours / 2) * (1 - parts.taxRate));
+  const ratingFirstPart = Math.max(0, midMonthPay - fixedAdvance);
+  const nextMonthRatingPay = Math.max(0, parts.basePay - midMonthPay - monthEndPay);
+
+  return {
+    midMonthPay,
+    monthEndPay,
+    nextMonthRatingPay,
+    tenurePay: parts.tenurePay,
+    estimatedTotal: midMonthPay + monthEndPay + nextMonthRatingPay + parts.tenurePay,
+    fixedAdvance,
+    fixedMonthEnd: monthEndPay,
+    fixedSettlement: 0,
+    ratingFirstPart,
+    ratingSecondPart: nextMonthRatingPay,
+    levelPay: 0,
+    extras: 0,
+    wowBonus: 0,
+    midMonthParts: {
+      base: fixedAdvance,
+      rating: ratingFirstPart,
+      wow: 0
+    },
+    monthEndParts: {
+      base: monthEndPay
+    },
+    nextMonthParts: {
+      rating: nextMonthRatingPay,
+      level: 0,
+      extras: 0,
+      settlement: 0
     }
   };
 }

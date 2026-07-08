@@ -277,9 +277,13 @@ export const PAYROLL_CONFIG = {
       source: "Копия Розрахувати зарплату (оператор айрон)",
       taxMode: "gross",
       taxRate: 0.23,
-      finesMode: "net",
       deductionLabel: "Сума БУР",
       tenureHoursMode: "separate",
+      paymentScheduleMode: "iron",
+      paymentHourlyRates: {
+        firstHalfNet: 19543.62 / 88,
+        secondHalfNet: 8873.76 / 88
+      },
       scheduleOptions: [
         { value: "2/2", label: "2/2" },
         { value: "5/2", label: "5/2" }
@@ -327,7 +331,7 @@ export const PAYROLL_CONFIG = {
         level2: 2400,
         level3: 4800
       },
-      tenureBase: 53400,
+      tenureBase: 53410,
       maxTenureYears: 15,
       ratingFirstPartRate: 0,
       defaultInputs: {
@@ -346,8 +350,8 @@ export const PAYROLL_CONFIG = {
         taxiAmount: 0,
         tenureYears: 2,
         tenureHours: 200,
-        firstHalfHours: 82.5,
-        secondHalfHours: 82.5,
+        firstHalfHours: 88,
+        secondHalfHours: 88,
         ratingFirstPart: 0,
         annualIncome: 0,
         absenceCalendarDays: 365,

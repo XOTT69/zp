@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=30";
+} from "./calculator.js?v=32";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
@@ -882,6 +882,12 @@ function loadInputs(type) {
     }
     if (type === "iron") {
       saved.testsHigh = false;
+      if (Number(saved.firstHalfHours) === 82.5) {
+        saved.firstHalfHours = defaults.firstHalfHours;
+      }
+      if (Number(saved.secondHalfHours) === 82.5) {
+        saved.secondHalfHours = defaults.secondHalfHours;
+      }
     }
     if (saved.secondHalfHours === undefined) {
       saved.secondHalfHours = defaults.secondHalfHours;
