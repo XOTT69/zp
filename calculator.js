@@ -427,6 +427,9 @@ function normalizeInputs(input, calculatorType) {
  * @returns {object} Estimated 15th, month-end, next-month and tenure payouts.
  */
 function calculatePaymentSchedule(values, parts) {
+  const calibratedSchedule = calculateCalibratedPaymentSchedule(values, parts);
+  if (calibratedSchedule) return calibratedSchedule;
+
   if (parts.paymentScheduleMode === "firstHalfRatingGross") {
     return calculateFirstHalfRatingGrossPaymentSchedule(values, parts);
   }
@@ -489,6 +492,55 @@ function calculatePaymentSchedule(values, parts) {
       level: levelPay,
       extras,
       settlement: fixedSettlement
+    }
+  };
+}
+
+function calculateCalibratedPaymentSchedule(values, parts) {
+  const rule = parts.paymentMonthlyRules?.[values.month];
+  if (!rule) return null;
+
+  const firstHalfHours = Math.min(values.firstHalfHours, parts.effectiveHours);
+  const secondHalfHours = Math.min(values.secondHalfHours, Math.max(0, parts.effectiveHours - firstHalfHours));
+  if (!closeHours(firstHalfHours, rule.firstHalfHours) || !closeHours(secondHalfHours, rule.secondHalfHours)) {
+    return null;
+  }
+
+  const midMonthPay = rule.firstHalfAmount;
+  const monthEndPay = rule.secondHalfAmount;
+  const nextMonthRatingPay = rule.nextMonthAmount ?? Math.max(0, parts.basePay - midMonthPay - monthEndPay);
+  const tenurePay = rule.tenureAmount && (!rule.tenureHours || closeHours(values.tenureHours ?? parts.effectiveHours, rule.tenureHours))
+    ? rule.tenureAmount
+    : parts.tenurePay;
+  const fixedAdvance = Math.min(midMonthPay, (values.salary / parts.normHours) * firstHalfHours * (parts.isGrossMode ? 1 - parts.taxRate : 1));
+
+  return {
+    midMonthPay,
+    monthEndPay,
+    nextMonthRatingPay,
+    tenurePay,
+    estimatedTotal: midMonthPay + monthEndPay + nextMonthRatingPay + tenurePay,
+    fixedAdvance,
+    fixedMonthEnd: monthEndPay,
+    fixedSettlement: 0,
+    ratingFirstPart: Math.max(0, midMonthPay - fixedAdvance),
+    ratingSecondPart: nextMonthRatingPay,
+    levelPay: 0,
+    extras: 0,
+    wowBonus: parts.wowBonus,
+    midMonthParts: {
+      base: fixedAdvance,
+      rating: Math.max(0, midMonthPay - fixedAdvance),
+      wow: parts.wowBonus
+    },
+    monthEndParts: {
+      base: monthEndPay
+    },
+    nextMonthParts: {
+      rating: nextMonthRatingPay,
+      level: 0,
+      extras: 0,
+      settlement: 0
     }
   };
 }

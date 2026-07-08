@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=34";
+} from "./calculator.js?v=35";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");

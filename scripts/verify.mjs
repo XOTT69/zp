@@ -7,6 +7,19 @@ configurePayrollData({
   config: PAYROLL_CONFIG
 });
 
+const calibratedConfig = structuredClone(PAYROLL_CONFIG);
+calibratedConfig.calculators.service.paymentMonthlyRules = {
+  Липень: {
+    firstHalfAmount: 10123.36,
+    firstHalfHours: 51,
+    secondHalfAmount: 5467.49,
+    secondHalfHours: 56,
+    nextMonthAmount: 11266.37,
+    tenureAmount: null,
+    tenureHours: null
+  }
+};
+
 const serviceResult = calculatePayroll({
   month: "Липень",
   actualHours: 187,
@@ -196,6 +209,36 @@ const videoLevel3YellowResult = calculatePayroll({
   secondHalfHours: 82.5
 }, "video");
 
+configurePayrollData({
+  months: MONTHS,
+  levels: LEVELS,
+  config: calibratedConfig
+});
+
+const serviceCalibratedResult = calculatePayroll({
+  month: "Липень",
+  actualHours: 107,
+  testsHigh: true,
+  ratingZone: 2,
+  level: "level3",
+  salary: 12497,
+  nightHours: 0,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 0,
+  firstHalfHours: 51,
+  secondHalfHours: 56
+}, "service");
+
+configurePayrollData({
+  months: MONTHS,
+  levels: LEVELS,
+  config: PAYROLL_CONFIG
+});
+
 const iron22Result = calculatePayroll({
   month: "Червень",
   workSchedule: "2/2",
@@ -342,6 +385,9 @@ const checks = [
   ["video.level3Green.levelBonusNet", videoLevel3GreenResult.paymentSchedule.nextMonthParts.level, 5500],
   ["video.level3White.levelBonusNet", videoLevel3WhiteResult.paymentSchedule.nextMonthParts.level, 2700],
   ["video.level3Yellow.levelBonusNet", videoLevel3YellowResult.paymentSchedule.nextMonthParts.level, 0],
+  ["service.calibrated.payment15", serviceCalibratedResult.paymentSchedule.midMonthPay, 10123.36],
+  ["service.calibrated.payment31", serviceCalibratedResult.paymentSchedule.monthEndPay, 5467.49],
+  ["service.calibrated.payment07", serviceCalibratedResult.paymentSchedule.nextMonthRatingPay, 11266.37],
   ["iron22.normHours", iron22Result.normHours, 165],
   ["iron22.ratingBonus", iron22Result.ratingBonus, 31160],
   ["iron22.levelBonus", iron22Result.levelBonus, 2400],
