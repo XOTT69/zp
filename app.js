@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=35";
+} from "./calculator.js?v=36";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
@@ -585,61 +585,72 @@ function renderPaymentSchedule(result) {
   if (form.elements.averageDailyPay) {
     form.elements.averageDailyPay.value = roundMoney(absence.averageDailyPay);
   }
-  const rows = [
-    {
-      label: "15 число",
-      value: schedule.midMonthPay,
-      parts: [
-        ["Оклад за години до 15-го", schedule.midMonthParts.base],
-        ["1 частина рейтингу", schedule.midMonthParts.rating],
-        ...(hasWowBonus() ? [["WOW-кейси", schedule.midMonthParts.wow]] : [])
-      ]
-    },
-    {
-      label: "31 число",
-      value: schedule.monthEndPay,
-      parts: [["Оклад за години 16-30/31", schedule.monthEndParts.base]]
-    },
-    {
-      label: "07 число",
-      value: schedule.nextMonthRatingPay,
-      parts: [
-        ["2 частина рейтингу", schedule.nextMonthParts.rating],
-        ["Доплата рівня", schedule.nextMonthParts.level],
-        ["Доплати / утримання", schedule.nextMonthParts.extras],
-        ["Коригування годин", schedule.nextMonthParts.settlement]
-      ]
-    },
-    {
-      label: "9/10 число",
-      value: schedule.tenurePay,
-      parts: [["Надбавка за стаж", schedule.tenurePay]]
-    }
-  ];
 
-  paymentGrid.innerHTML = rows
-    .map(
-      (row) => `
-        <article class="payment-card">
-          <span>${row.label}</span>
-          <strong>${formatCurrency(row.value)}</strong>
-          <div class="payment-parts">
-            ${row.parts
-              .filter(([, value]) => Math.abs(value) > 0.004)
-              .map(
-                ([label, value]) => `
-                  <div>
-                    <small>${label}</small>
-                    <b>${formatCurrency(value)}</b>
-                  </div>
-                `
-              )
-              .join("")}
-          </div>
-        </article>
-      `
-    )
-    .join("");
+  if (!hasReliablePaymentSchedule()) {
+    paymentGrid.innerHTML = `
+      <article class="payment-card payment-card-muted">
+        <span>У донавчанні</span>
+        <strong>Прогноз виплат скоро буде</strong>
+        <small>Формула ЗП рахується, а календар виплат тимчасово прихований до звірки з фактичними листками.</small>
+      </article>
+    `;
+  } else {
+    const rows = [
+      {
+        label: "15 число",
+        value: schedule.midMonthPay,
+        parts: [
+          ["Оклад за години до 15-го", schedule.midMonthParts.base],
+          ["1 частина рейтингу", schedule.midMonthParts.rating],
+          ...(hasWowBonus() ? [["WOW-кейси", schedule.midMonthParts.wow]] : [])
+        ]
+      },
+      {
+        label: "31 число",
+        value: schedule.monthEndPay,
+        parts: [["Оклад за години 16-30/31", schedule.monthEndParts.base]]
+      },
+      {
+        label: "07 число",
+        value: schedule.nextMonthRatingPay,
+        parts: [
+          ["2 частина рейтингу", schedule.nextMonthParts.rating],
+          ["Доплата рівня", schedule.nextMonthParts.level],
+          ["Доплати / утримання", schedule.nextMonthParts.extras],
+          ["Коригування годин", schedule.nextMonthParts.settlement]
+        ]
+      },
+      {
+        label: "9/10 число",
+        value: schedule.tenurePay,
+        parts: [["Надбавка за стаж", schedule.tenurePay]]
+      }
+    ];
+
+    paymentGrid.innerHTML = rows
+      .map(
+        (row) => `
+          <article class="payment-card">
+            <span>${row.label}</span>
+            <strong>${formatCurrency(row.value)}</strong>
+            <div class="payment-parts">
+              ${row.parts
+                .filter(([, value]) => Math.abs(value) > 0.004)
+                .map(
+                  ([label, value]) => `
+                    <div>
+                      <small>${label}</small>
+                      <b>${formatCurrency(value)}</b>
+                    </div>
+                  `
+                )
+                .join("")}
+            </div>
+          </article>
+        `
+      )
+      .join("");
+  }
 
   absenceGrid.innerHTML = [
     ["Середня за день", absence.averageDailyPay, "ЗП за 12 місяців / календарні дні"],
@@ -677,10 +688,14 @@ function renderReport(result) {
     ["Податки", formatCurrency(result.tax)],
     [totalGrossLabel, formatCurrency(result.totalGross)],
     ["Загальна сума до виплати", formatCurrency(result.totalPay)],
-    ["15 число", formatCurrency(result.paymentSchedule.midMonthPay)],
-    ["31 число", formatCurrency(result.paymentSchedule.monthEndPay)],
-    ["07 число", formatCurrency(result.paymentSchedule.nextMonthRatingPay)],
-    ["9/10 число стаж", formatCurrency(result.paymentSchedule.tenurePay)],
+    ...(hasReliablePaymentSchedule()
+      ? [
+          ["15 число", formatCurrency(result.paymentSchedule.midMonthPay)],
+          ["31 число", formatCurrency(result.paymentSchedule.monthEndPay)],
+          ["07 число", formatCurrency(result.paymentSchedule.nextMonthRatingPay)],
+          ["9/10 число стаж", formatCurrency(result.paymentSchedule.tenurePay)]
+        ]
+      : [["Виплати по датах", "У донавчанні"]]),
     ["Середня ЗП за день", formatCurrency(result.absencePayments.averageDailyPay)],
     ["Відпустка/лікарняні/декретні", formatCurrency(result.absencePayments.total)]
   ];
@@ -703,6 +718,10 @@ function renderReport(result) {
         .join("")}
     </div>
   `;
+}
+
+function hasReliablePaymentSchedule() {
+  return calculatorType === "supervisor";
 }
 
 function serviceRows(result) {
@@ -836,6 +855,15 @@ function renderScenarios() {
 
 function buildTextReport(result, config) {
   const totalGrossLabel = isGrossCalculator() ? "Разом з податком (ЗП + стаж)" : "Орієнтовно з податком";
+  const paymentLines = hasReliablePaymentSchedule()
+    ? [
+        `15 число: ${formatCurrency(result.paymentSchedule.midMonthPay)}`,
+        `31 число: ${formatCurrency(result.paymentSchedule.monthEndPay)}`,
+        `07 число: ${formatCurrency(result.paymentSchedule.nextMonthRatingPay)}`,
+        `9/10 число стаж: ${formatCurrency(result.paymentSchedule.tenurePay)}`
+      ]
+    : ["Виплати по датах: у донавчанні"];
+
   return [
     `${config.title}, ${result.input.month}`,
     `Загальна сума до виплати: ${formatCurrency(result.totalPay)}`,
@@ -843,10 +871,7 @@ function buildTextReport(result, config) {
     `Стаж: ${formatCurrency(result.tenurePay)}`,
     `Податки: ${formatCurrency(result.tax)}`,
     `${totalGrossLabel}: ${formatCurrency(result.totalGross)}`,
-    `15 число: ${formatCurrency(result.paymentSchedule.midMonthPay)}`,
-    `31 число: ${formatCurrency(result.paymentSchedule.monthEndPay)}`,
-    `07 число: ${formatCurrency(result.paymentSchedule.nextMonthRatingPay)}`,
-    `9/10 число стаж: ${formatCurrency(result.paymentSchedule.tenurePay)}`,
+    ...paymentLines,
     `Середня ЗП за день: ${formatCurrency(result.absencePayments.averageDailyPay)}`,
     `Відпустка/лікарняні/декретні: ${formatCurrency(result.absencePayments.total)}`,
     `Години: ${roundMoney(result.effectiveHours)} / норма ${result.normHours}`,

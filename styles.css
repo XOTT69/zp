@@ -924,6 +924,10 @@ h2 {
   background: linear-gradient(180deg, #ffffff 0%, #f8fbfa 100%);
 }
 
+.payment-card-muted {
+  grid-column: 1 / -1;
+}
+
 .payment-card span {
   color: var(--accent);
   font-size: 0.82rem;
