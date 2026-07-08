@@ -117,6 +117,33 @@ const level4ClampedZoneResult = calculatePayroll({
   tenureYears: 0
 }, "level4");
 
+const level4ZoneBonusChecks = [
+  ["level2", 1, 3617],
+  ["level2", 2, 3617],
+  ["level2", 3, 0],
+  ["level3", 1, 7234],
+  ["level3", 2, 3617],
+  ["level3", 3, 0]
+].map(([level, ratingZone, expected]) => {
+  const result = calculatePayroll({
+    month: "Липень",
+    workSchedule: "2/2",
+    actualHours: 165,
+    testsHigh: false,
+    ratingZone,
+    level,
+    salary: 22241,
+    nightHours: 0,
+    holidayHours: 0,
+    doubleHours: 0,
+    wowCases: 0,
+    fines: 0,
+    taxiAmount: 0,
+    tenureYears: 0
+  }, "level4");
+  return [`level4.${level}.zone${ratingZone}.levelBonus`, result.levelBonus, expected];
+});
+
 const xdResult = calculatePayroll({
   month: "Березень",
   actualHours: 184,
@@ -451,6 +478,7 @@ const checks = [
   ["level452.totalPay", level452Result.totalPay, 51520.931],
   ["level4.clampedZone", level4ClampedZoneResult.input.ratingZone, 3],
   ["level4.clampedRatingBonus", level4ClampedZoneResult.ratingBonus, 27543],
+  ...level4ZoneBonusChecks,
   ["xd.normHours", xdResult.normHours, 165],
   ["xd.ratingBonus", xdResult.ratingBonus, 19130],
   ["xd.levelBonus", xdResult.levelBonus, 2787],
