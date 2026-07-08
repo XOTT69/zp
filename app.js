@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=38";
+} from "./calculator.js?v=39";
 
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
@@ -486,8 +486,8 @@ function buildValidationMessages(result) {
 
   if (calculatorType === "video" && result.levelBonus === 0 && input.level !== "level1") {
     const hint = input.level === "level2"
-      ? "2 рівень дає +2700 тільки в зонах 1, 2, 3."
-      : "3 рівень дає +5500 у зонах 1, 2; +2700 у зоні 3; у зонах 4-5 доплати немає.";
+      ? "2 рівень дає 3620 до податку тільки в зонах 1, 2, 3."
+      : "3 рівень дає 7240 до податку в зонах 1, 2; 3506,49 до податку в зоні 3; у зонах 4-5 доплати немає.";
     messages.push({ tone: "info", text: `Доплата рівня зараз 0, бо зона ${input.ratingZone} не проходить під правило. ${hint}` });
   }
 

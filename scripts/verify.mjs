@@ -227,6 +227,24 @@ const videoPayslipResult = calculatePayroll({
   secondHalfHours: 72.5
 }, "video");
 
+const videoMayPayslipResult = calculatePayroll({
+  month: "Травень",
+  actualHours: 90,
+  testsHigh: false,
+  ratingZone: 1,
+  level: "level2",
+  salary: 30360,
+  nightHours: 22,
+  holidayHours: 0,
+  doubleHours: 0,
+  wowCases: 0,
+  fines: 0,
+  taxiAmount: 0,
+  tenureYears: 2,
+  firstHalfHours: 45,
+  secondHalfHours: 45
+}, "video");
+
 configurePayrollData({
   months: MONTHS,
   levels: LEVELS,
@@ -394,11 +412,11 @@ const checks = [
   ["video.payment31", videoResult.paymentSchedule.monthEndPay, 13285.68],
   ["video.payment07", videoResult.paymentSchedule.nextMonthRatingPay, 6599.88],
   ["video.default.ratingZone", PAYROLL_CONFIG.calculators.video.defaultInputs.ratingZone, 3],
-  ["video.default.level2CleanBonus", PAYROLL_CONFIG.calculators.video.levelBonusByLevelAndZone.level2[3] * 0.77, 2700],
+  ["video.default.level2BonusGross", PAYROLL_CONFIG.calculators.video.levelBonusByLevelAndZone.level2[3], 3620],
   ["video.maxTenure.inputYears", videoMaxTenureResult.input.tenureYears, 15],
   ["video.maxTenure.tenurePay", videoMaxTenureResult.tenurePay, 29931.44],
   ["video.maxTenure.totalPay", videoMaxTenureResult.totalPay, 66842.16],
-  ["video.level2White.levelBonusNet", videoLevel2WhiteResult.paymentSchedule.nextMonthParts.level, 2700],
+  ["video.level2White.levelBonusNet", videoLevel2WhiteResult.paymentSchedule.nextMonthParts.level, 2787.4],
   ["video.level2Yellow.levelBonusNet", videoLevel2YellowResult.paymentSchedule.nextMonthParts.level, 0],
   ["video.level3Green.levelBonusNet", videoLevel3GreenResult.paymentSchedule.nextMonthParts.level, 5574.8],
   ["video.level3White.levelBonusNet", videoLevel3WhiteResult.paymentSchedule.nextMonthParts.level, 2700],
@@ -409,6 +427,12 @@ const checks = [
   ["video.payslip.tenurePay", videoPayslipResult.tenurePay, 3287.923333],
   ["video.payslip.totalGross", videoPayslipResult.totalGross, 55300.151515],
   ["video.payslip.totalPay", videoPayslipResult.totalPay, 42581.116667],
+  ["video.mayPayslip.baseGross", videoMayPayslipResult.baseGross, 31273.236364],
+  ["video.mayPayslip.basePay", videoMayPayslipResult.basePay, 24080.392],
+  ["video.mayPayslip.tenureGross", videoMayPayslipResult.tenureGross, 2650.363636],
+  ["video.mayPayslip.tenurePay", videoMayPayslipResult.tenurePay, 2040.78],
+  ["video.mayPayslip.totalGross", videoMayPayslipResult.totalGross, 33923.6],
+  ["video.mayPayslip.totalPay", videoMayPayslipResult.totalPay, 26121.172],
   ["service.calibrated.payment15", serviceCalibratedResult.paymentSchedule.midMonthPay, 10123.36],
   ["service.calibrated.payment31", serviceCalibratedResult.paymentSchedule.monthEndPay, 5467.49],
   ["service.calibrated.payment07", serviceCalibratedResult.paymentSchedule.nextMonthRatingPay, 11266.37],

@@ -53,9 +53,9 @@ function applyRuntimeConfigOverrides(config) {
       levelBonusByLevelAndZone: {
         level1: { default: 0 },
         level2: {
-          1: 2700 / 0.77,
-          2: 2700 / 0.77,
-          3: 2700 / 0.77,
+          1: 3620,
+          2: 3620,
+          3: 3620,
           4: 0,
           5: 0
         },

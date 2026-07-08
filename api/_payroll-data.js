@@ -220,7 +220,7 @@ export const PAYROLL_CONFIG = {
       paymentScheduleMode: "firstHalfRatingGross",
       fixedAdvanceNet: 11650,
       ratingBonusByZone: {
-        1: 52233 - 30360,
+        1: 21870,
         2: 50410 - 30360,
         3: 48587 - 30360,
         4: 46764 - 30360,
@@ -256,9 +256,9 @@ export const PAYROLL_CONFIG = {
       levelBonusByLevelAndZone: {
         level1: { default: 0 },
         level2: {
-          1: 2700 / 0.77,
-          2: 2700 / 0.77,
-          3: 2700 / 0.77,
+          1: 3620,
+          2: 3620,
+          3: 3620,
           4: 0,
           5: 0
         },
