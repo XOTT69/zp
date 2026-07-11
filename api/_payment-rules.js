@@ -1,4 +1,6 @@
 const RULES_KEY = "zp:payment-rules";
+const ALLOWED_CALCULATORS = new Set(["service", "iron"]);
+const ALLOWED_MONTHS = new Set(["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"]);
 const memoryRules = globalThis.__payrollPaymentRules ?? {};
 globalThis.__payrollPaymentRules = memoryRules;
 
@@ -17,6 +19,7 @@ export async function savePaymentRule(calculator, month, rule) {
   const rules = await getPaymentRules();
   const safeCalculator = cleanKey(calculator);
   const safeMonth = cleanKey(month);
+  validateRuleKey(safeCalculator, safeMonth);
   rules[safeCalculator] = {
     ...(rules[safeCalculator] ?? {}),
     [safeMonth]: normalizeRule(rule)
@@ -30,6 +33,7 @@ export async function savePaymentRule(calculator, month, rule) {
 }
 
 export async function deletePaymentRule(calculator, month) {
+  validateRuleKey(calculator, month);
   const rules = await getPaymentRules();
   if (rules[calculator]) {
     delete rules[calculator][month];
@@ -78,6 +82,11 @@ async function redis(command) {
 
 function cleanKey(value) {
   return String(value || "").slice(0, 40);
+}
+
+function validateRuleKey(calculator, month) {
+  if (!ALLOWED_CALCULATORS.has(calculator)) throw new Error("Невідомий калькулятор правила виплат.");
+  if (!ALLOWED_MONTHS.has(month)) throw new Error("Невідомий місяць правила виплат.");
 }
 
 function toMoney(value) {

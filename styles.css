@@ -700,6 +700,74 @@ h2 {
   background: var(--accent);
 }
 
+.rating-zone {
+  --zone-bg: #ffffff;
+  --zone-border: var(--line);
+  --zone-ink: var(--muted);
+  --zone-active: var(--accent);
+  color: var(--zone-ink);
+  border-color: var(--zone-border);
+  background: var(--zone-bg);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.rating-zone:hover {
+  border-color: var(--zone-active);
+  transform: translateY(-1px);
+}
+
+.rating-zone:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--zone-active) 36%, transparent);
+  outline-offset: 2px;
+}
+
+.rating-zone.is-active {
+  color: #ffffff;
+  border-color: var(--zone-active);
+  background: var(--zone-active);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--zone-active) 24%, transparent);
+}
+
+.rating-zone--green {
+  --zone-bg: #e2f5e9;
+  --zone-border: #7fc79a;
+  --zone-ink: #176b3a;
+  --zone-active: #18824a;
+}
+
+.rating-zone--lime {
+  --zone-bg: #eff8d8;
+  --zone-border: #a9cf66;
+  --zone-ink: #4d6f16;
+  --zone-active: #587f17;
+}
+
+.rating-zone--yellow {
+  --zone-bg: #fff4c2;
+  --zone-border: #e4c34c;
+  --zone-ink: #755800;
+  --zone-active: #956b00;
+}
+
+.rating-zone--pink {
+  --zone-bg: #fde7ef;
+  --zone-border: #e7a4bc;
+  --zone-ink: #8b3151;
+  --zone-active: #ad3a62;
+}
+
+.rating-zone--red {
+  --zone-bg: #fde5e3;
+  --zone-border: #ea9993;
+  --zone-ink: #972d28;
+  --zone-active: #ad302a;
+}
+
 .radio-segmented {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1463,6 +1531,32 @@ h2 {
 
   :root:not([data-theme]) .icon-button:hover {
     background: rgba(159, 45, 45, 0.18);
+  }
+}
+
+:root[data-theme="dark"] .rating-zone:not(.is-active) {
+  color: color-mix(in srgb, var(--zone-active) 66%, #ffffff);
+  border-color: color-mix(in srgb, var(--zone-active) 52%, var(--line));
+  background: color-mix(in srgb, var(--zone-active) 16%, var(--panel));
+}
+
+:root[data-theme="dark"] .rating-zone.is-active {
+  color: #ffffff;
+  border-color: var(--zone-active);
+  background: var(--zone-active);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .rating-zone:not(.is-active) {
+    color: color-mix(in srgb, var(--zone-active) 66%, #ffffff);
+    border-color: color-mix(in srgb, var(--zone-active) 52%, var(--line));
+    background: color-mix(in srgb, var(--zone-active) 16%, var(--panel));
+  }
+
+  :root:not([data-theme]) .rating-zone.is-active {
+    color: #ffffff;
+    border-color: var(--zone-active);
+    background: var(--zone-active);
   }
 }
 

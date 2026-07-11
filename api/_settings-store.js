@@ -1,27 +1,65 @@
+import { validateAdminSettings } from "./_settings-validation.js";
+
 const SETTINGS_KEY = "zp:admin-settings";
+const HISTORY_KEY = "zp:admin-settings:history";
+const HISTORY_LIMIT = 30;
+
 const memorySettings = globalThis.__payrollAdminSettings ?? defaultSettings();
+const memoryHistory = globalThis.__payrollAdminSettingsHistory ?? [];
 globalThis.__payrollAdminSettings = memorySettings;
+globalThis.__payrollAdminSettingsHistory = memoryHistory;
 
 export async function getAdminSettings() {
   if (!hasRedis()) return structuredClone(memorySettings);
 
   try {
-    const response = await redis(["GET", SETTINGS_KEY]);
-    return normalizeSettings(response.result ? JSON.parse(response.result) : memorySettings);
+    const response = await redisPipeline([["GET", SETTINGS_KEY]]);
+    const stored = response[0]?.result ? JSON.parse(response[0].result) : memorySettings;
+    return validateAdminSettings(stored);
   } catch {
     return structuredClone(memorySettings);
   }
 }
 
-export async function saveAdminSettings(settings) {
-  const normalized = normalizeSettings(settings);
-  Object.keys(memorySettings).forEach((key) => delete memorySettings[key]);
-  Object.assign(memorySettings, normalized);
+export async function getSettingsHistory(limit = 20) {
+  const safeLimit = Math.min(HISTORY_LIMIT, Math.max(1, Number(limit) || 20));
+  if (!hasRedis()) return structuredClone(memoryHistory.slice(0, safeLimit));
+
+  try {
+    const response = await redisPipeline([["LRANGE", HISTORY_KEY, 0, safeLimit - 1]]);
+    return (response[0]?.result ?? []).map(parseHistoryEntry).filter(Boolean);
+  } catch {
+    return structuredClone(memoryHistory.slice(0, safeLimit));
+  }
+}
+
+export async function saveAdminSettings(settings, meta = {}) {
+  const normalized = validateAdminSettings(settings);
+  const previous = await getAdminSettings();
+  if (JSON.stringify(previous) === JSON.stringify(normalized)) return normalized;
+
+  const revision = createRevision(previous, meta);
+  rememberRevision(revision);
+  replaceMemorySettings(normalized);
 
   if (hasRedis()) {
-    await redis(["SET", SETTINGS_KEY, JSON.stringify(normalized)]).catch(() => {});
+    await redisPipeline([
+      ["SET", SETTINGS_KEY, JSON.stringify(normalized)],
+      ["LPUSH", HISTORY_KEY, JSON.stringify(revision)],
+      ["LTRIM", HISTORY_KEY, 0, HISTORY_LIMIT - 1]
+    ]).catch(() => {});
   }
   return normalized;
+}
+
+export async function rollbackAdminSettings(revisionId) {
+  const history = await getSettingsHistory(HISTORY_LIMIT);
+  const revision = history.find((item) => item.id === revisionId);
+  if (!revision) throw new Error("Версію для відкату не знайдено.");
+  return saveAdminSettings(revision.settings, {
+    action: "rollback",
+    summary: `Відкат до версії від ${revision.at}`
+  });
 }
 
 export function defaultSettings() {
@@ -36,28 +74,47 @@ export function defaultSettings() {
   };
 }
 
-function normalizeSettings(settings = {}) {
+function createRevision(settings, meta) {
   return {
-    version: {
-      label: String(settings.version?.label || "Правила актуальні з 01.03.2026").slice(0, 120),
-      updatedAt: String(settings.version?.updatedAt || new Date().toISOString().slice(0, 10)).slice(0, 20),
-      note: String(settings.version?.note || "").slice(0, 240)
-    },
-    overrides: normalizeObject(settings.overrides),
-    templates: normalizeObject(settings.templates)
+    id: crypto.randomUUID(),
+    at: new Date().toISOString(),
+    action: meta.action === "rollback" ? "rollback" : "update",
+    summary: String(meta.summary || "Оновлено налаштування").slice(0, 160),
+    settings: structuredClone(settings)
   };
 }
 
-function normalizeObject(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return JSON.parse(JSON.stringify(value));
+function rememberRevision(revision) {
+  memoryHistory.unshift(structuredClone(revision));
+  memoryHistory.splice(HISTORY_LIMIT);
+}
+
+function replaceMemorySettings(settings) {
+  Object.keys(memorySettings).forEach((key) => delete memorySettings[key]);
+  Object.assign(memorySettings, structuredClone(settings));
+}
+
+function parseHistoryEntry(value) {
+  try {
+    const entry = typeof value === "string" ? JSON.parse(value) : value;
+    if (!entry?.id || !entry?.at || !entry?.settings) return null;
+    return {
+      id: String(entry.id).slice(0, 80),
+      at: String(entry.at).slice(0, 40),
+      action: entry.action === "rollback" ? "rollback" : "update",
+      summary: String(entry.summary || "Оновлено налаштування").slice(0, 160),
+      settings: validateAdminSettings(entry.settings)
+    };
+  } catch {
+    return null;
+  }
 }
 
 function hasRedis() {
   return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 }
 
-async function redis(command) {
+async function redisPipeline(commands) {
   const url = process.env.UPSTASH_REDIS_REST_URL.replace(/\/$/, "");
   const response = await fetch(`${url}/pipeline`, {
     method: "POST",
@@ -65,8 +122,8 @@ async function redis(command) {
       Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify([command])
+    body: JSON.stringify(commands)
   });
   if (!response.ok) throw new Error("Redis request failed");
-  return (await response.json())[0];
+  return response.json();
 }

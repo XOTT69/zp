@@ -46,8 +46,12 @@ export function jsonResponse(res, status, body, headers = {}) {
 export async function readJsonBody(req) {
   if (req.body && typeof req.body === "object") return req.body;
   const chunks = [];
+  let size = 0;
   for await (const chunk of req) {
-    chunks.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk));
+    const text = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+    size += new TextEncoder().encode(text).byteLength;
+    if (size > 128 * 1024) throw new Error("Request body is too large");
+    chunks.push(text);
   }
   const raw = chunks.join("");
   return raw ? JSON.parse(raw) : {};

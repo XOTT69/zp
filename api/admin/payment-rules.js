@@ -17,16 +17,24 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const body = await readJsonBody(req);
-    const rules = await savePaymentRule(body.calculator, body.month, body.rule ?? {});
-    jsonResponse(res, 200, { ok: true, rules });
+    try {
+      const body = await readJsonBody(req);
+      const rules = await savePaymentRule(body.calculator, body.month, body.rule ?? {});
+      jsonResponse(res, 200, { ok: true, rules });
+    } catch (error) {
+      jsonResponse(res, 400, { error: error.message || "Невірне правило виплат." });
+    }
     return;
   }
 
   if (req.method === "DELETE") {
-    const body = await readJsonBody(req);
-    const rules = await deletePaymentRule(body.calculator, body.month);
-    jsonResponse(res, 200, { ok: true, rules });
+    try {
+      const body = await readJsonBody(req);
+      const rules = await deletePaymentRule(body.calculator, body.month);
+      jsonResponse(res, 200, { ok: true, rules });
+    } catch (error) {
+      jsonResponse(res, 400, { error: error.message || "Невірне правило виплат." });
+    }
     return;
   }
 

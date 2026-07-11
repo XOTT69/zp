@@ -7,9 +7,28 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=51";
+} from "./calculator.js?v=53";
+import { endSession, fetchSession, loginWithCode } from "./modules/auth-client.js?v=53";
+import {
+  adminPaymentRulesHtml,
+  adminRecentHtml,
+  adminRolesHtml,
+  adminStatsHtml,
+  settingsHistoryHtml
+} from "./modules/admin-ui.js?v=53";
+import { clampRatingZone as clampZone, ratingButtonsHtml } from "./modules/calculator-ui.js?v=53";
+import { buildTextReport as createTextReport, reportHtml } from "./modules/reports.js?v=53";
+import { escapeHtml } from "./modules/safe-html.js?v=53";
+import {
+  MAX_SCENARIOS,
+  loadCalculatorInputs,
+  loadSavedTheme,
+  loadScenarios,
+  saveCalculatorInputs,
+  saveScenarios,
+  saveTheme
+} from "./modules/storage.js?v=53";
 
-const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const form = document.querySelector("#calculatorForm");
 const accessView = document.querySelector("#accessView");
 const accessForm = document.querySelector("#accessForm");
@@ -31,6 +50,7 @@ const adminStorageNotice = document.querySelector("#adminStorageNotice");
 const adminStats = document.querySelector("#adminStats");
 const adminRoles = document.querySelector("#adminRoles");
 const adminRecent = document.querySelector("#adminRecent");
+const adminSettingsHistory = document.querySelector("#adminSettingsHistory");
 const monthSelect = document.querySelector("#month");
 const levelSelect = document.querySelector("#level");
 const ratingZoneGroup = document.querySelector("#ratingZoneGroup");
@@ -55,8 +75,6 @@ const reportPanel = document.querySelector("#reportPanel");
 const paymentGrid = document.querySelector("#paymentGrid");
 const absenceGrid = document.querySelector("#absenceGrid");
 const toast = document.querySelector("#toast");
-const MAX_SCENARIOS = 6;
-const THEME_STORAGE_KEY = "zp-theme";
 const APP_EYEBROW = "Калькулятор ЗП для графіка 2/2";
 const ACTIVE_ACCESS_ROLES = new Set(["admin", "operator", "supervisor", "level4", "xd", "video", "iron"]);
 const ACTIVE_CALCULATOR_KEYS = new Set(["service", "supervisor", "level4", "xd", "video", "iron"]);
@@ -93,6 +111,7 @@ async function init() {
   adminVersionForm.addEventListener("submit", saveAdminVersion);
   adminRatesForm.addEventListener("submit", saveAdminRates);
   adminTemplatesForm.addEventListener("submit", saveAdminTemplates);
+  adminSettingsHistory.addEventListener("click", rollbackAdminSettings);
   adminPayslipForm.addEventListener("submit", compareAdminPayslip);
   addScenarioButton.addEventListener("click", addScenario);
   clearScenariosButton.addEventListener("click", clearScenarios);
@@ -109,8 +128,7 @@ async function init() {
 
 async function hydrateSession() {
   try {
-    const response = await fetch("/api/session", { credentials: "same-origin" });
-    const data = await response.json();
+    const { data } = await fetchSession();
     if (!data.authenticated) return;
     accessSession = data.session;
     basePayrollPayload = data.payroll;
@@ -240,13 +258,7 @@ async function handleAccessSubmit(event) {
   accessError.textContent = "";
 
   try {
-    const response = await fetch("/api/login", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role, code })
-    });
-    const data = await response.json();
+    const { response, data } = await loginWithCode(role, code);
 
     if (!response.ok || !data.authenticated) {
       accessError.textContent = data.error || "Невірний код доступу.";
@@ -270,7 +282,7 @@ async function handleAccessSubmit(event) {
 async function logout() {
   accessSession = null;
   lastTrackedView = "";
-  await fetch("/api/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
+  await endSession();
   navigateTo("/login");
   renderRoute();
 }
@@ -358,19 +370,7 @@ function renderModeLabels() {
 }
 
 function renderRatingButtons(activeZone) {
-  const zones = getRatingZones();
-  ratingZoneGroup.innerHTML = zones
-    .map(
-      (zone) => `
-        <button
-          class="segment ${zone === activeZone ? "is-active" : ""}"
-          data-zone="${zone}"
-          type="button"
-          aria-pressed="${zone === activeZone}"
-        >${zone}</button>
-      `
-    )
-    .join("");
+  ratingZoneGroup.innerHTML = ratingButtonsHtml(CALCULATORS, calculatorType, activeZone);
 }
 
 function handleRatingClick(event) {
@@ -760,24 +760,7 @@ function renderReport(result) {
     ["Відпустка/лікарняні/декретні", formatCurrency(result.absencePayments.total)]
   ];
 
-  reportPanel.innerHTML = `
-    <div class="report-header">
-      <span>Звіт</span>
-      <strong>${config.title}</strong>
-    </div>
-    <div class="report-table">
-      ${rows
-        .map(
-          ([label, value]) => `
-            <div>
-              <span>${label}</span>
-              <strong>${value}</strong>
-            </div>
-          `
-        )
-        .join("")}
-    </div>
-  `;
+  reportPanel.innerHTML = reportHtml(rows, config.title);
 }
 
 function hasReliablePaymentSchedule() {
@@ -832,7 +815,13 @@ async function copySummary() {
   if (!calculatorType) return;
   const result = calculatePayroll(readInputs(), calculatorType);
   const config = CALCULATORS[calculatorType];
-  const summary = buildTextReport(result, config);
+  const summary = createTextReport(result, config, {
+    isGross: isGrossCalculator(),
+    hasReliablePaymentSchedule: hasReliablePaymentSchedule(),
+    formatCurrency,
+    roundMoney,
+    levelLabel
+  });
 
   try {
     await navigator.clipboard.writeText(summary);
@@ -899,45 +888,18 @@ function renderScenarios() {
       return `
         <article class="scenario-item">
           <div>
-            <span>${scenario.name}</span>
+            <span>${escapeHtml(scenario.name)}</span>
             <strong>${formatCurrency(scenario.totalPay)}</strong>
-            <small>${scenario.inputs.month}, зона ${scenario.inputs.ratingZone}, ${roundMoney(scenario.inputs.actualHours)} год</small>
+            <small>${escapeHtml(scenario.inputs.month)}, зона ${escapeHtml(scenario.inputs.ratingZone)}, ${roundMoney(scenario.inputs.actualHours)} год</small>
           </div>
           <div class="scenario-controls">
             <div class="scenario-delta ${deltaClass}">${deltaLabel}</div>
-            <button class="icon-button" type="button" data-delete-scenario="${scenario.id}" aria-label="Видалити сценарій">×</button>
+            <button class="icon-button" type="button" data-delete-scenario="${escapeHtml(scenario.id)}" aria-label="Видалити сценарій">×</button>
           </div>
         </article>
       `;
     })
     .join("");
-}
-
-function buildTextReport(result, config) {
-  const totalGrossLabel = isGrossCalculator() ? "Разом з податком (ЗП + стаж)" : "Орієнтовно з податком";
-  const paymentLines = hasReliablePaymentSchedule()
-    ? [
-        `15 число: ${formatCurrency(result.paymentSchedule.midMonthPay)}`,
-        `31 число: ${formatCurrency(result.paymentSchedule.monthEndPay)}`,
-        `07 число: ${formatCurrency(result.paymentSchedule.nextMonthRatingPay)}`,
-        `9/10 число стаж: ${formatCurrency(result.paymentSchedule.tenurePay)}`
-      ]
-    : ["Виплати по датах: у донавчанні"];
-
-  return [
-    `${config.title}, ${result.input.month}`,
-    `Загальна сума до виплати: ${formatCurrency(result.totalPay)}`,
-    `ЗП: ${formatCurrency(result.basePay)}`,
-    `Стаж: ${formatCurrency(result.tenurePay)}`,
-    `Податки: ${formatCurrency(result.tax)}`,
-    `${totalGrossLabel}: ${formatCurrency(result.totalGross)}`,
-    ...paymentLines,
-    `Середня ЗП за день: ${formatCurrency(result.absencePayments.averageDailyPay)}`,
-    `Відпустка/лікарняні/декретні: ${formatCurrency(result.absencePayments.total)}`,
-    `Години: ${roundMoney(result.effectiveHours)} / норма ${result.normHours}`,
-    `Рейтинг: зона ${result.input.ratingZone}, ${formatCurrency(result.ratingBonus)}`,
-    `Рівень: ${levelLabel(result.input.level)}, ${formatCurrency(result.levelBonus)}`
-  ].join("\n");
 }
 
 function reset() {
@@ -965,82 +927,19 @@ function showStatus(message) {
 }
 
 function loadInputs(type) {
-  try {
-    const defaults = getRuntimeDefaults(type);
-    const saved = JSON.parse(localStorage.getItem(storageKey(type))) ?? {};
-    if (type === "supervisor" && Number(saved.firstHalfHours) === 82.5) {
-      saved.firstHalfHours = defaults.firstHalfHours;
-    }
-    if (type === "video" && Number(saved.ratingZone) === 5 && saved.level === "level3") {
-      saved.ratingZone = defaults.ratingZone;
-      saved.level = defaults.level;
-    }
-    if (type === "video") {
-      saved.testsHigh = false;
-    }
-    if (type === "iron") {
-      saved.testsHigh = false;
-      if (Number(saved.firstHalfHours) === 82.5) {
-        saved.firstHalfHours = defaults.firstHalfHours;
-      }
-      if (Number(saved.secondHalfHours) === 82.5) {
-        saved.secondHalfHours = defaults.secondHalfHours;
-      }
-    }
-    if (saved.secondHalfHours === undefined) {
-      saved.secondHalfHours = defaults.secondHalfHours;
-    }
-    const inputs = {
-      ...defaults,
-      ...saved,
-      salary: defaults.salary,
-      ratingFirstPart: defaults.ratingFirstPart
-    };
-    inputs.ratingZone = clampRatingZone(inputs.ratingZone, type);
-    return inputs;
-  } catch {
-    const defaults = getRuntimeDefaults(type);
-    return { ...defaults, ratingZone: clampRatingZone(defaults.ratingZone, type) };
-  }
+  return loadCalculatorInputs(type, getRuntimeDefaults(type), clampRatingZone);
 }
 
 function saveInputs(type, inputs) {
-  localStorage.setItem(storageKey(type), JSON.stringify(inputs));
-}
-
-function storageKey(type) {
-  return `${STORAGE_KEY_PREFIX}-${type}`;
-}
-
-function scenarioStorageKey(type) {
-  return `${STORAGE_KEY_PREFIX}-scenarios-${type}`;
-}
-
-function loadScenarios(type) {
-  try {
-    return JSON.parse(localStorage.getItem(scenarioStorageKey(type))) ?? [];
-  } catch {
-    return [];
-  }
-}
-
-function saveScenarios(type, scenarios) {
-  localStorage.setItem(scenarioStorageKey(type), JSON.stringify(scenarios.slice(-MAX_SCENARIOS)));
+  saveCalculatorInputs(type, inputs);
 }
 
 function levelLabel(value) {
   return LEVELS.find((level) => level.value === value)?.label ?? value;
 }
 
-function getRatingZones(type = calculatorType) {
-  return CALCULATORS[type]?.ratingZones?.length ? CALCULATORS[type].ratingZones : [1, 2, 3, 4, 5];
-}
-
 function clampRatingZone(zone, type = calculatorType) {
-  const zones = getRatingZones(type);
-  const numberZone = Number(zone);
-  if (zones.includes(numberZone)) return numberZone;
-  return zones.at(-1) ?? 1;
+  return clampZone(CALCULATORS, zone, type);
 }
 
 function getLevelBonusDisplayValue(result) {
@@ -1159,6 +1058,7 @@ async function renderAdminPanel() {
   adminRecent.innerHTML = "";
   adminPaymentRules.innerHTML = "";
   adminPayslipResult.innerHTML = "";
+  adminSettingsHistory.innerHTML = "";
 
   try {
     const [statsResponse, rulesResponse, settingsResponse] = await Promise.all([
@@ -1178,6 +1078,7 @@ async function renderAdminPanel() {
     renderAdminRecent(data.stats.recent);
     renderAdminPaymentRules(rulesData.rules);
     renderAdminSettings(settingsData.settings);
+    adminSettingsHistory.innerHTML = settingsHistoryHtml(settingsData.history);
   } catch (error) {
     adminStorageNotice.textContent = error.message || "Не вдалося завантажити адмін-панель.";
   }
@@ -1191,98 +1092,19 @@ function renderAdminStats(stats) {
   };
   adminStorageNotice.textContent = storageMessages[stats.storage] || "Стан сховища статистики невідомий.";
 
-  const counters = stats.counters ?? {};
-  adminStats.innerHTML = [
-    ["Успішні входи", counters.loginSuccess],
-    ["Невдалі входи", counters.loginFailed],
-    ["Перегляди", counters.views],
-    ["Копії", counters.copies],
-    ["PDF", counters.pdfs],
-    ["Спроби входу", counters.loginAttempts]
-  ]
-    .map(
-      ([label, value]) => `
-        <article class="admin-stat">
-          <span>${label}</span>
-          <strong>${formatCount(value)}</strong>
-        </article>
-      `
-    )
-    .join("");
+  adminStats.innerHTML = adminStatsHtml(stats);
 }
 
 function renderAdminRoles(roles, calculators) {
-  adminRoles.innerHTML = Object.entries(roles)
-    .map(([key, role]) => {
-      const allowed = role.allowedCalculators
-        .map((calculator) => calculators[calculator]?.title ?? calculator)
-        .join(", ");
-      const statusClass = role.configured ? "" : " is-warning";
-      const status = role.configured ? "env задано" : "env не задано";
-
-      return `
-        <article class="admin-row">
-          <div>
-            <strong>${role.label}</strong>
-            <small>${key}${role.isAdmin ? " · повний доступ" : ""}</small>
-          </div>
-          <small>${allowed || "Немає доступних калькуляторів"}</small>
-          <span class="status-pill${statusClass}">${status}</span>
-        </article>
-      `;
-    })
-    .join("");
+  adminRoles.innerHTML = adminRolesHtml(roles, calculators);
 }
 
 function renderAdminRecent(recent) {
-  if (!recent?.length) {
-    adminRecent.innerHTML = `<p class="empty-state">Подій ще немає.</p>`;
-    return;
-  }
-
-  adminRecent.innerHTML = recent
-    .map(
-      (event) => `
-        <article class="admin-row">
-          <div>
-            <strong>${eventLabel(event.type)}</strong>
-            <small>${formatDateTime(event.at)}</small>
-          </div>
-          <small>Роль: ${event.role || "unknown"} · Розділ: ${event.calculator || event.path || "login"}</small>
-          <span class="status-pill">${event.success === false ? "відмова" : "ok"}</span>
-        </article>
-      `
-    )
-    .join("");
+  adminRecent.innerHTML = adminRecentHtml(recent);
 }
 
 function renderAdminPaymentRules(rules = {}) {
-  const entries = Object.entries(rules).flatMap(([calculator, byMonth]) =>
-    Object.entries(byMonth).map(([month, rule]) => ({ calculator, month, rule }))
-  );
-
-  if (!entries.length) {
-    adminPaymentRules.innerHTML = `<p class="empty-state">Правил ще немає. Додайте факт виплат за місяць, щоб прогноз калібрувався автоматично.</p>`;
-    return;
-  }
-
-  adminPaymentRules.innerHTML = entries
-    .map(({ calculator, month, rule }) => `
-      <article class="admin-row">
-        <div>
-          <strong>${calculator.toUpperCase()} · ${month}</strong>
-          <small>${rule.note || "Калібрування по фактичних виплатах"}</small>
-        </div>
-        <small>
-          15: ${formatCurrency(rule.firstHalfAmount)} / ${roundMoney(rule.firstHalfHours)} год ·
-          31: ${formatCurrency(rule.secondHalfAmount)} / ${roundMoney(rule.secondHalfHours)} год ·
-          07: ${rule.nextMonthAmount === null ? "авто" : formatCurrency(rule.nextMonthAmount)} ·
-          стаж: ${rule.tenureAmount === null ? "авто" : formatCurrency(rule.tenureAmount)}
-        </small>
-        <button class="ghost-button danger-button" type="button" data-delete-rule="${calculator}:${month}">Видалити</button>
-      </article>
-    `)
-    .join("");
+  adminPaymentRules.innerHTML = adminPaymentRulesHtml(rules, formatCurrency, roundMoney);
 }
 
 function renderAdminSettings(settings = {}) {
@@ -1366,10 +1188,11 @@ async function saveAdminSettings(settings, successMessage) {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ settings })
+    body: JSON.stringify({ settings, summary: successMessage })
   });
   if (!response.ok) {
-    showStatus("Не вдалося зберегти налаштування");
+    const error = await response.json().catch(() => ({}));
+    showStatus(error.error || "Не вдалося зберегти налаштування");
     return;
   }
 
@@ -1378,6 +1201,29 @@ async function saveAdminSettings(settings, successMessage) {
   activeSettings = data.settings;
   await refreshPayrollConfig();
   showStatus(successMessage);
+  renderAdminPanel();
+}
+
+async function rollbackAdminSettings(event) {
+  const button = event.target.closest("[data-rollback-settings]");
+  if (!button) return;
+  if (!window.confirm("Відновити цю версію ставок і шаблонів? Поточний стан теж залишиться в історії.")) return;
+
+  const response = await fetch("/api/admin/settings", {
+    method: "PATCH",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ revisionId: button.dataset.rollbackSettings })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    showStatus(data.error || "Не вдалося відновити версію");
+    return;
+  }
+  adminSettingsState = data.settings;
+  activeSettings = data.settings;
+  await refreshPayrollConfig();
+  showStatus("Версію налаштувань відновлено");
   renderAdminPanel();
 }
 
@@ -1671,28 +1517,6 @@ function applyPaymentRules(payroll, rules = {}) {
   };
 }
 
-function eventLabel(type) {
-  return {
-    login_success: "Вхід",
-    login_failed: "Невдалий вхід",
-    view: "Перегляд",
-    copy: "Копія",
-    pdf: "PDF"
-  }[type] ?? type;
-}
-
-function formatCount(value) {
-  return new Intl.NumberFormat("uk-UA").format(Number(value || 0));
-}
-
-function formatDateTime(value) {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("uk-UA", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(new Date(value));
-}
-
 function prettyJson(value) {
   return JSON.stringify(value ?? {}, null, 2);
 }
@@ -1703,7 +1527,7 @@ function toNumber(value) {
 }
 
 function applySavedTheme() {
-  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  const savedTheme = loadSavedTheme();
   const theme = savedTheme === "dark" || savedTheme === "light"
     ? savedTheme
     : document.documentElement.dataset.theme || preferredTheme();
@@ -1718,7 +1542,7 @@ function toggleTheme() {
 function setTheme(theme, persist) {
   document.documentElement.dataset.theme = theme;
   if (persist) {
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    saveTheme(theme);
   }
   themeToggle.textContent = theme === "dark" ? "Світла" : "Темна";
   themeToggle.setAttribute("aria-pressed", String(theme === "dark"));

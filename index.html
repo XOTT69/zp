@@ -12,8 +12,8 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
-    <script src="./theme.js?v=51"></script>
-    <link rel="stylesheet" href="./styles.css?v=51" />
+    <script src="./theme.js?v=53"></script>
+    <link rel="stylesheet" href="./styles.css?v=53" />
   </head>
   <body>
     <div class="shell">
@@ -223,6 +223,14 @@
             </label>
             <button class="primary-button" type="submit">Зберегти шаблони</button>
           </form>
+        </section>
+
+        <section class="panel admin-panel">
+          <div class="section-heading">
+            <p class="eyebrow">Безпека змін</p>
+            <h2>Історія ставок і шаблонів</h2>
+          </div>
+          <div class="admin-table" id="adminSettingsHistory"></div>
         </section>
 
         <section class="panel admin-panel">
@@ -569,6 +577,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <script type="module" src="./app.js?v=51"></script>
+    <script type="module" src="./app.js?v=53"></script>
   </body>
 </html>
