@@ -449,6 +449,22 @@ const ironMayResult = calculatePayroll({
   secondHalfHours: 44
 }, "iron");
 
+const negativeInputResult = calculatePayroll({
+  month: "Липень",
+  actualHours: -10,
+  testsHigh: false,
+  ratingZone: 1,
+  level: "level1",
+  salary: -100,
+  nightHours: -5,
+  holidayHours: -5,
+  doubleHours: -5,
+  wowCases: 0,
+  fines: -1000,
+  taxiAmount: -1000,
+  tenureYears: 0
+}, "service");
+
 const monthNormChecks = MONTHS.map((month) => [
   `month.${month.name}.hours`,
   month.hours,
@@ -456,6 +472,10 @@ const monthNormChecks = MONTHS.map((month) => [
 ]);
 
 const checks = [
+  ["negative.actualHoursClamped", negativeInputResult.input.actualHours, 0],
+  ["negative.salaryClamped", negativeInputResult.input.salary, 0],
+  ["negative.finesClamped", negativeInputResult.input.fines, 0],
+  ["negative.taxiClamped", negativeInputResult.input.taxiAmount, 0],
   ...monthNormChecks,
   ["service.normHours", serviceResult.normHours, 165],
   ["service.effectiveHours", serviceResult.effectiveHours, 188],

@@ -3,6 +3,7 @@ import { SettingsValidationError, validateAdminSettings } from "../api/_settings
 import { ratingButtonsHtml } from "../modules/calculator-ui.js";
 import { escapeHtml } from "../modules/safe-html.js";
 import loginHandler from "../api/login.js";
+import { savePaymentRule } from "../api/_payment-rules.js";
 
 const failures = [];
 
@@ -49,6 +50,26 @@ const loginResponse = await callLogin({ role: "operator", code: "verification-co
 check("login API success", loginResponse.statusCode, 200);
 check("login API sets cookie", Boolean(loginResponse.headers["Set-Cookie"]), true);
 
+let limitedResponse;
+for (let attempt = 0; attempt < 11; attempt += 1) {
+  limitedResponse = await callLogin({ role: "operator", code: "wrong-code" }, "203.0.113.99");
+}
+check("login API rate limit", limitedResponse.statusCode, 429);
+check("login API retry-after", Boolean(limitedResponse.headers["Retry-After"]), true);
+
+await expectAsyncError("invalid payment amount", () => savePaymentRule("service", "Липень", {
+  firstHalfAmount: "not-a-number",
+  firstHalfHours: 80,
+  secondHalfAmount: 1000,
+  secondHalfHours: 80
+}));
+await expectAsyncError("excessive payment hours", () => savePaymentRule("service", "Липень", {
+  firstHalfAmount: 1000,
+  firstHalfHours: 401,
+  secondHalfAmount: 1000,
+  secondHalfHours: 80
+}));
+
 const original = await getAdminSettings();
 await saveAdminSettings({
   ...original,
@@ -76,6 +97,15 @@ function expectValidationError(name, settings) {
     failures.push(`${name}: expected validation error`);
   } catch (error) {
     if (!(error instanceof SettingsValidationError)) failures.push(`${name}: unexpected ${error?.name || error}`);
+  }
+}
+
+async function expectAsyncError(name, callback) {
+  try {
+    await callback();
+    failures.push(`${name}: expected error`);
+  } catch {
+    // Expected validation failure.
   }
 }
 

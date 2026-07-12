@@ -253,8 +253,11 @@ async function handleAccessSubmit(event) {
   const role = formData.get("role");
   const code = formData.get("code");
   const submitButton = accessForm.querySelector("button[type='submit']");
+  const submitLabel = submitButton.textContent;
 
   submitButton.disabled = true;
+  submitButton.textContent = "Перевіряю…";
+  accessForm.setAttribute("aria-busy", "true");
   accessError.textContent = "";
 
   try {
@@ -276,6 +279,8 @@ async function handleAccessSubmit(event) {
     accessError.textContent = "Не вдалося увійти. Перевірте Vercel API або інтернет.";
   } finally {
     submitButton.disabled = false;
+    submitButton.textContent = submitLabel;
+    accessForm.removeAttribute("aria-busy");
   }
 }
 
@@ -479,7 +484,7 @@ function renderResult(result) {
     .map(
       ([label, value]) => `
         <div class="breakdown-row">
-          <span>${label}</span>
+          <span>${escapeHtml(label)}</span>
           <strong>${formatCurrency(value)}</strong>
         </div>
       `
@@ -490,7 +495,7 @@ function renderResult(result) {
 function renderValidation(result) {
   const messages = buildValidationMessages(result);
   validationMessages.innerHTML = messages
-    .map((message) => `<div class="notice ${message.tone}">${message.text}</div>`)
+    .map((message) => `<div class="notice ${message.tone}">${escapeHtml(message.text)}</div>`)
     .join("");
 }
 
@@ -547,8 +552,8 @@ function renderFormulaList(result) {
     .map(
       (row) => `
         <div class="formula-row">
-          <strong>${row.label}</strong>
-          <span>${row.formula}</span>
+          <strong>${escapeHtml(row.label)}</strong>
+          <span>${escapeHtml(row.formula)}</span>
         </div>
       `
     )
@@ -1052,6 +1057,8 @@ function renderScheduleOptions() {
 
 async function renderAdminPanel() {
   if (!accessSession?.isAdmin) return;
+  adminView.setAttribute("aria-busy", "true");
+  adminRefreshButton.disabled = true;
   adminStorageNotice.textContent = "Завантажую статистику...";
   adminStats.innerHTML = "";
   adminRoles.innerHTML = "";
@@ -1081,6 +1088,9 @@ async function renderAdminPanel() {
     adminSettingsHistory.innerHTML = settingsHistoryHtml(settingsData.history);
   } catch (error) {
     adminStorageNotice.textContent = error.message || "Не вдалося завантажити адмін-панель.";
+  } finally {
+    adminView.removeAttribute("aria-busy");
+    adminRefreshButton.disabled = false;
   }
 }
 
@@ -1327,7 +1337,8 @@ async function saveAdminPaymentRule(event) {
     body: JSON.stringify(payload)
   });
   if (!response.ok) {
-    showStatus("Не вдалося зберегти правило");
+    const error = await response.json().catch(() => ({}));
+    showStatus(error.error || "Не вдалося зберегти правило");
     return;
   }
 

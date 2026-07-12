@@ -415,17 +415,17 @@ function normalizeInputs(input, calculatorType) {
   return {
     month: input.month || defaults.month,
     workSchedule: input.workSchedule || defaults.workSchedule || config.defaultWorkSchedule || "2/2",
-    actualHours: toNumber(input.actualHours),
+    actualHours: nonNegative(input.actualHours),
     testsHigh: Boolean(input.testsHigh),
     ratingZone,
     level: input.level || defaults.level,
-    salary: toNumber(input.salary),
-    nightHours: toNumber(input.nightHours),
-    holidayHours: toNumber(input.holidayHours),
-    doubleHours: toNumber(input.doubleHours),
+    salary: nonNegative(input.salary),
+    nightHours: nonNegative(input.nightHours),
+    holidayHours: nonNegative(input.holidayHours),
+    doubleHours: nonNegative(input.doubleHours),
     wowCases: normalizeBonusInput(input.wowCases, config),
-    fines: toNumber(input.fines),
-    taxiAmount: toNumber(input.taxiAmount),
+    fines: nonNegative(input.fines),
+    taxiAmount: nonNegative(input.taxiAmount),
     tenureYears,
     tenureHours: Math.max(0, toNumber(valueOrDefault(input.tenureHours, input.actualHours))),
     firstHalfHours: Math.max(0, toNumber(valueOrDefault(input.firstHalfHours, defaults.firstHalfHours))),
@@ -749,6 +749,10 @@ function calculateAbsencePayments(values) {
 function toNumber(value) {
   const parsed = Number(String(value ?? 0).replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function nonNegative(value) {
+  return Math.max(0, toNumber(value));
 }
 
 function getDoublePay(values, config, ratingBonus, normHours) {

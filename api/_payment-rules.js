@@ -24,11 +24,10 @@ export async function savePaymentRule(calculator, month, rule) {
     ...(rules[safeCalculator] ?? {}),
     [safeMonth]: normalizeRule(rule)
   };
-  Object.assign(memoryRules, rules);
-
   if (hasRedis()) {
-    await redis(["SET", RULES_KEY, JSON.stringify(rules)]).catch(() => {});
+    await redis(["SET", RULES_KEY, JSON.stringify(rules)]);
   }
+  replaceMemoryRules(rules);
   return rules;
 }
 
@@ -40,13 +39,16 @@ export async function deletePaymentRule(calculator, month) {
     if (Object.keys(rules[calculator]).length === 0) delete rules[calculator];
   }
 
+  if (hasRedis()) {
+    await redis(["SET", RULES_KEY, JSON.stringify(rules)]);
+  }
+  replaceMemoryRules(rules);
+  return rules;
+}
+
+function replaceMemoryRules(rules) {
   Object.keys(memoryRules).forEach((key) => delete memoryRules[key]);
   Object.assign(memoryRules, rules);
-
-  if (hasRedis()) {
-    await redis(["SET", RULES_KEY, JSON.stringify(rules)]).catch(() => {});
-  }
-  return rules;
 }
 
 function normalizeRule(rule) {
@@ -90,7 +92,7 @@ function validateRuleKey(calculator, month) {
 }
 
 function toMoney(value) {
-  return Math.max(0, Math.round(Number(value || 0) * 100) / 100);
+  return boundedNumber(value, 0, 100_000_000, "Сума");
 }
 
 function toOptionalMoney(value) {
@@ -99,10 +101,18 @@ function toOptionalMoney(value) {
 }
 
 function toHours(value) {
-  return Math.max(0, Math.round(Number(value || 0) * 100) / 100);
+  return boundedNumber(value, 0, 400, "Години");
 }
 
 function toOptionalHours(value) {
   if (value === "" || value === null || value === undefined) return null;
   return toHours(value);
+}
+
+function boundedNumber(value, min, max, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < min || number > max) {
+    throw new Error(`${label} має бути числом від ${min} до ${max}.`);
+  }
+  return Math.round(number * 100) / 100;
 }

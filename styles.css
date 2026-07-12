@@ -39,6 +39,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   min-width: 320px;
   margin: 0;
@@ -70,6 +74,24 @@ button {
   cursor: pointer;
 }
 
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  transform: translateY(-160%);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #ffffff;
+  background: var(--accent-strong);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 .shell {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
@@ -87,6 +109,7 @@ button {
   z-index: 10;
   padding: 8px 0;
   backdrop-filter: blur(18px);
+  border-bottom: 1px solid transparent;
 }
 
 .eyebrow {
@@ -127,12 +150,32 @@ h2 {
 
 .primary-button,
 .ghost-button {
-  min-height: 34px;
+  min-height: 40px;
   border-radius: 8px;
   padding: 0 12px;
   border: 1px solid transparent;
   font-size: 0.9rem;
   font-weight: 800;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  outline-offset: 3px;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+  box-shadow: none;
 }
 
 .primary-button {
@@ -143,6 +186,21 @@ h2 {
 
 .primary-button:hover {
   background: var(--accent-strong);
+}
+
+.primary-button,
+.ghost-button,
+.mode-switcher a {
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.primary-button:hover:not(:disabled),
+.ghost-button:hover:not(:disabled) {
+  transform: translateY(-1px);
 }
 
 .ghost-button {
@@ -219,11 +277,20 @@ h2 {
 .access-card {
   width: min(520px, 100%);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 16px;
   padding: 28px;
   background: var(--glass);
   box-shadow: var(--shadow);
   backdrop-filter: blur(22px);
+}
+
+[aria-busy="true"] {
+  cursor: progress;
+}
+
+.admin-view[aria-busy="true"] > :not(.admin-head) {
+  opacity: 0.58;
+  transition: opacity 160ms ease;
 }
 
 .access-card h2 {
@@ -311,7 +378,7 @@ h2 {
   overflow: hidden;
   margin-bottom: 18px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 14px;
   background: var(--line);
   box-shadow: var(--shadow);
 }
@@ -351,7 +418,7 @@ h2 {
 .admin-stat,
 .admin-panel {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 14px;
   background: var(--glass);
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
@@ -437,7 +504,7 @@ h2 {
 .choice-card,
 .home-help {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 14px;
   background: var(--glass);
   box-shadow: var(--shadow);
   backdrop-filter: blur(22px);
@@ -578,7 +645,7 @@ h2 {
 
 .panel {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 14px;
   background: var(--glass);
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
@@ -1358,6 +1425,7 @@ h2 {
   .topbar {
     display: grid;
     gap: 10px;
+    position: static;
   }
 
   .top-actions {
@@ -1386,7 +1454,6 @@ h2 {
 }
 
 @media (max-width: 560px) {
-  .mode-switcher,
   .choice-grid,
   .form-grid,
   .result-grid,
@@ -1398,7 +1465,29 @@ h2 {
 
   .top-actions {
     display: flex;
+    flex-wrap: nowrap;
     gap: 6px;
+    overflow-x: auto;
+    padding: 3px 3px 8px;
+    scrollbar-width: thin;
+  }
+
+  .top-actions > * {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .mode-switcher {
+    display: flex;
+    overflow-x: auto;
+    padding: 2px 2px 8px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+
+  .mode-switcher a {
+    flex: 0 0 150px;
+    scroll-snap-align: start;
   }
 
   .top-actions .primary-button,
@@ -1412,6 +1501,16 @@ h2 {
   .inputs-panel,
   .result-panel {
     padding: 16px;
+  }
+
+  .access-view {
+    min-height: calc(100vh - 130px);
+    align-items: start;
+    padding-top: 18px;
+  }
+
+  .access-card {
+    padding: 20px;
   }
 
   .breakdown-row {
@@ -1437,6 +1536,21 @@ h2 {
   .scenario-controls {
     justify-content: space-between;
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 

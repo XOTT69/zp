@@ -12,11 +12,12 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
-    <script src="./theme.js?v=53"></script>
-    <link rel="stylesheet" href="./styles.css?v=53" />
+    <script src="./theme.js?v=54"></script>
+    <link rel="stylesheet" href="./styles.css?v=54" />
   </head>
   <body>
-    <div class="shell">
+    <a class="skip-link" href="#shellStart">До основного вмісту</a>
+    <div class="shell" id="shellStart" tabindex="-1">
       <header class="topbar">
         <div>
           <p class="eyebrow" id="appEyebrow">Калькулятор ЗП для графіка 2/2</p>
@@ -81,7 +82,7 @@
             </label>
             <label>
               <span>Код доступу</span>
-              <input name="code" id="accessCode" type="password" autocomplete="current-password" />
+              <input name="code" id="accessCode" type="password" autocomplete="current-password" required aria-describedby="accessError" />
             </label>
             <button class="primary-button" type="submit">Увійти</button>
             <p class="access-error" id="accessError" role="alert"></p>
@@ -577,6 +578,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <script type="module" src="./app.js?v=53"></script>
+    <script type="module" src="./app.js?v=54"></script>
   </body>
 </html>

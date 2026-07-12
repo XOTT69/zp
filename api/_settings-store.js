@@ -39,16 +39,15 @@ export async function saveAdminSettings(settings, meta = {}) {
   if (JSON.stringify(previous) === JSON.stringify(normalized)) return normalized;
 
   const revision = createRevision(previous, meta);
-  rememberRevision(revision);
-  replaceMemorySettings(normalized);
-
   if (hasRedis()) {
     await redisPipeline([
       ["SET", SETTINGS_KEY, JSON.stringify(normalized)],
       ["LPUSH", HISTORY_KEY, JSON.stringify(revision)],
       ["LTRIM", HISTORY_KEY, 0, HISTORY_LIMIT - 1]
-    ]).catch(() => {});
+    ]);
   }
+  rememberRevision(revision);
+  replaceMemorySettings(normalized);
   return normalized;
 }
 

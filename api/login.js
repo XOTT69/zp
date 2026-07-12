@@ -1,6 +1,7 @@
 import { createSessionCookie, jsonResponse, readJsonBody } from "./_auth.js";
 import { ACCESS_CONFIG, getPayrollPayloadForRole, getRoleCode, getSessionForRole } from "./_payroll-data.js";
 import { recordAuthEvent } from "./_stats-store.js";
+import { clearLoginAttempts, consumeLoginAttempt } from "./_login-rate-limit.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -10,6 +11,13 @@ export default async function handler(req, res) {
 
   try {
     const { role, code } = await readJsonBody(req);
+    const rateLimit = await consumeLoginAttempt(req, role);
+    if (!rateLimit.allowed) {
+      jsonResponse(res, 429, { error: "Забагато спроб входу. Спробуйте пізніше." }, {
+        "Retry-After": String(rateLimit.retryAfter)
+      });
+      return;
+    }
     const roleConfig = ACCESS_CONFIG[role];
     const expectedCode = roleConfig ? getRoleCode(role) : "";
 
@@ -23,6 +31,7 @@ export default async function handler(req, res) {
     const payroll = getPayrollPayloadForRole(role);
     const cookie = await createSessionCookie(role);
 
+    await clearLoginAttempts(req, role);
     await recordAuthEvent({ role, success: true });
     jsonResponse(res, 200, { authenticated: true, session, payroll }, { "Set-Cookie": cookie });
   } catch (error) {
