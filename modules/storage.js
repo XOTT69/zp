@@ -2,6 +2,7 @@ const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const THEME_STORAGE_KEY = "zp-theme";
 
 export const MAX_SCENARIOS = 6;
+export const MAX_HISTORY_ITEMS = 8;
 
 export function loadCalculatorInputs(type, defaults, clampZone) {
   try {
@@ -37,6 +38,28 @@ export function saveScenarios(type, scenarios) {
   localStorage.setItem(scenarioStorageKey(type), JSON.stringify(scenarios.slice(-MAX_SCENARIOS)));
 }
 
+export function loadCalculationHistory(type) {
+  try {
+    const history = JSON.parse(localStorage.getItem(historyStorageKey(type))) ?? [];
+    return Array.isArray(history) ? history.slice(-MAX_HISTORY_ITEMS) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCalculationHistory(type, history) {
+  localStorage.setItem(historyStorageKey(type), JSON.stringify(history.slice(-MAX_HISTORY_ITEMS)));
+}
+
+export function loadPreferredRole() {
+  return localStorage.getItem("zp-preferred-role") || "";
+}
+
+export function savePreferredRole(role) {
+  if (role) localStorage.setItem("zp-preferred-role", role);
+  else localStorage.removeItem("zp-preferred-role");
+}
+
 export function loadSavedTheme() {
   const theme = localStorage.getItem(THEME_STORAGE_KEY);
   return theme === "dark" || theme === "light" ? theme : null;
@@ -52,6 +75,10 @@ function inputStorageKey(type) {
 
 function scenarioStorageKey(type) {
   return `${STORAGE_KEY_PREFIX}-scenarios-${type}`;
+}
+
+function historyStorageKey(type) {
+  return `${STORAGE_KEY_PREFIX}-history-${type}`;
 }
 
 function migrateSavedInputs(type, saved, defaults) {

@@ -1,5 +1,7 @@
 export const SESSION_COOKIE = "zp_session";
-const SESSION_TTL_SECONDS = 60 * 60 * 12;
+// Keep a signed session for a month and refresh it while the user is active.
+// The cookie contains no password or access code.
+export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 export async function createSessionCookie(role) {
   const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
@@ -54,6 +56,10 @@ export async function readJsonBody(req) {
     chunks.push(text);
   }
   const raw = chunks.join("");
+  const contentType = req.headers?.["content-type"] ?? req.headers?.get?.("content-type") ?? "";
+  if (contentType.includes("application/x-www-form-urlencoded")) {
+    return Object.fromEntries(new URLSearchParams(raw));
+  }
   return raw ? JSON.parse(raw) : {};
 }
 

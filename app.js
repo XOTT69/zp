@@ -21,10 +21,14 @@ import { buildTextReport as createTextReport, reportHtml } from "./modules/repor
 import { escapeHtml } from "./modules/safe-html.js?v=53";
 import {
   MAX_SCENARIOS,
+  loadCalculationHistory,
   loadCalculatorInputs,
+  loadPreferredRole,
   loadSavedTheme,
   loadScenarios,
+  saveCalculationHistory,
   saveCalculatorInputs,
+  savePreferredRole,
   saveScenarios,
   saveTheme
 } from "./modules/storage.js?v=53";
@@ -32,6 +36,9 @@ import {
 const form = document.querySelector("#calculatorForm");
 const accessView = document.querySelector("#accessView");
 const accessForm = document.querySelector("#accessForm");
+const accessRole = document.querySelector("#accessRole");
+const accessUsername = document.querySelector("#accessUsername");
+const rememberRole = document.querySelector("#rememberRole");
 const accessError = document.querySelector("#accessError");
 const adminView = document.querySelector("#adminView");
 const adminButton = document.querySelector("#adminButton");
@@ -42,6 +49,8 @@ const adminRuleMonth = document.querySelector("#adminRuleMonth");
 const adminPaymentRules = document.querySelector("#adminPaymentRules");
 const adminVersionForm = document.querySelector("#adminVersionForm");
 const adminRatesForm = document.querySelector("#adminRatesForm");
+const previewRatesButton = document.querySelector("#previewRatesButton");
+const adminRatePreview = document.querySelector("#adminRatePreview");
 const adminTemplatesForm = document.querySelector("#adminTemplatesForm");
 const adminPayslipForm = document.querySelector("#adminPayslipForm");
 const adminPayslipMonth = document.querySelector("#adminPayslipMonth");
@@ -69,11 +78,20 @@ const roleBadge = document.querySelector("#roleBadge");
 const addScenarioButton = document.querySelector("#addScenarioButton");
 const clearScenariosButton = document.querySelector("#clearScenariosButton");
 const scenarioList = document.querySelector("#scenarioList");
+const saveHistoryButton = document.querySelector("#saveHistoryButton");
+const clearHistoryButton = document.querySelector("#clearHistoryButton");
+const historyList = document.querySelector("#historyList");
 const validationMessages = document.querySelector("#validationMessages");
 const formulaList = document.querySelector("#formulaList");
 const reportPanel = document.querySelector("#reportPanel");
 const paymentGrid = document.querySelector("#paymentGrid");
 const absenceGrid = document.querySelector("#absenceGrid");
+const effectiveHourlyResult = document.querySelector("#effectiveHourlyResult");
+const effectiveHourlyResultValue = document.querySelector("#effectiveHourlyResultValue");
+const rulesVersion = document.querySelector("#rulesVersion");
+const tenureResultCard = document.querySelector("#tenureResultCard");
+const ratingResultCard = document.querySelector("#ratingResultCard");
+const levelResultCard = document.querySelector("#levelResultCard");
 const toast = document.querySelector("#toast");
 const APP_EYEBROW = "Калькулятор ЗП для графіка 2/2";
 const ACTIVE_ACCESS_ROLES = new Set(["admin", "operator", "supervisor", "level4", "xd", "video", "iron"]);
@@ -94,7 +112,10 @@ init();
 async function init() {
   applySavedTheme();
   removeStaleStaticOptions();
+  restorePreferredRole();
+  syncPasswordManagerUsername();
   accessForm.addEventListener("submit", handleAccessSubmit);
+  accessRole.addEventListener("change", syncPasswordManagerUsername);
   form.addEventListener("input", update);
   form.addEventListener("change", handleFormChange);
   ratingZoneGroup.addEventListener("click", handleRatingClick);
@@ -110,12 +131,16 @@ async function init() {
   adminPaymentRules.addEventListener("click", deleteAdminPaymentRule);
   adminVersionForm.addEventListener("submit", saveAdminVersion);
   adminRatesForm.addEventListener("submit", saveAdminRates);
+  previewRatesButton.addEventListener("click", previewAdminRates);
   adminTemplatesForm.addEventListener("submit", saveAdminTemplates);
   adminSettingsHistory.addEventListener("click", rollbackAdminSettings);
   adminPayslipForm.addEventListener("submit", compareAdminPayslip);
   addScenarioButton.addEventListener("click", addScenario);
   clearScenariosButton.addEventListener("click", clearScenarios);
   scenarioList.addEventListener("click", handleScenarioClick);
+  saveHistoryButton.addEventListener("click", saveCurrentCalculationToHistory);
+  clearHistoryButton.addEventListener("click", clearCalculationHistory);
+  historyList.addEventListener("click", handleHistoryClick);
   homeButton.addEventListener("click", () => {
     navigateTo("/");
   });
@@ -247,11 +272,23 @@ function removeStaleStaticOptions() {
   });
 }
 
+function syncPasswordManagerUsername() {
+  if (!accessRole || !accessUsername) return;
+  const selectedRole = accessRole.selectedOptions[0];
+  accessUsername.value = selectedRole?.textContent?.trim() ?? "";
+}
+
+function restorePreferredRole() {
+  const savedRole = loadPreferredRole();
+  if (!savedRole || !ACTIVE_ACCESS_ROLES.has(savedRole)) return;
+  accessRole.value = savedRole;
+}
+
 async function handleAccessSubmit(event) {
   event.preventDefault();
   const formData = new FormData(accessForm);
   const role = formData.get("role");
-  const code = formData.get("code");
+  const code = formData.get("password");
   const submitButton = accessForm.querySelector("button[type='submit']");
   const submitLabel = submitButton.textContent;
 
@@ -273,7 +310,9 @@ async function handleAccessSubmit(event) {
     lastPayrollPayload = await applyRemoteConfig(basePayrollPayload);
     configurePayrollData(lastPayrollPayload);
     renderSelects();
+    savePreferredRole(rememberRole?.checked ? role : "");
     accessForm.reset();
+    syncPasswordManagerUsername();
     navigateTo(accessSession.isAdmin ? "/admin" : `/${firstAllowedCalculator()}`);
   } catch {
     accessError.textContent = "Не вдалося увійти. Перевірте Vercel API або інтернет.";
@@ -412,6 +451,7 @@ function update() {
   renderPaymentSchedule(result);
   renderReport(result);
   renderScenarios();
+  renderCalculationHistory();
 }
 
 function handleFormChange(event) {
@@ -477,6 +517,11 @@ function renderResult(result) {
   setText("#tenureNet", formatCurrency(result.tenurePay));
   setText("#ratingBonus", formatCurrency(result.ratingBonus));
   setText("#levelBonus", formatCurrency(getLevelBonusDisplayValue(result)));
+  tenureResultCard.hidden = Math.abs(result.tenurePay) < 0.005;
+  ratingResultCard.hidden = Math.abs(result.ratingBonus) < 0.005;
+  levelResultCard.hidden = Math.abs(getLevelBonusDisplayValue(result)) < 0.005;
+  renderEffectiveHourlyPay(result);
+  renderRulesVersion();
 
   const rows = isGrossCalculator() ? grossRows(result) : serviceRows(result);
 
@@ -490,6 +535,19 @@ function renderResult(result) {
       `
     )
     .join("");
+}
+
+function renderEffectiveHourlyPay(result) {
+  const showHourlyPay = isHourlyPayCalculator() && result.effectiveHourlyPay !== null;
+  effectiveHourlyResult.hidden = !showHourlyPay;
+  setText("#effectiveHourlyResultValue", showHourlyPay ? `${formatCurrency(result.effectiveHourlyPay)} / год` : "—");
+}
+
+function renderRulesVersion() {
+  const version = activeSettings.version;
+  rulesVersion.textContent = version?.label
+    ? `${version.label}${version.updatedAt ? ` · оновлено ${version.updatedAt}` : ""}`
+    : "Базові правила калькулятора";
 }
 
 function renderValidation(result) {
@@ -585,6 +643,12 @@ function formulaRows(result) {
       label: "Години в розрахунку",
       formula: `${roundMoney(i.actualHours)} + ${result.testHours} = ${roundMoney(result.effectiveHours)}`
     },
+    ...(isHourlyPayCalculator() && result.effectiveHourlyPay !== null
+      ? [{
+          label: "Ефективна годинна ЗП",
+          formula: `${formatCurrency(result.totalPay)} / ${roundMoney(i.actualHours)} год = ${formatCurrency(result.effectiveHourlyPay)} / год`
+        }]
+      : []),
     {
       label: "Рейтинг",
       formula: `зона ${i.ratingZone} -> ${formatCurrency(result.ratingBonus)}`
@@ -744,6 +808,9 @@ function renderReport(result) {
     ...(hasWorkScheduleInput() ? [["Графік", result.input.workSchedule]] : []),
     ["Фактичні години", roundMoney(result.input.actualHours)],
     ["Години в розрахунку", roundMoney(result.effectiveHours)],
+    ...(isHourlyPayCalculator() && result.effectiveHourlyPay !== null
+      ? [["Ефективна годинна ЗП", `${formatCurrency(result.effectiveHourlyPay)} / год`]]
+      : []),
     ...(hasTenureHoursInput() ? [["Години для стажу", roundMoney(result.tenureHours)]] : []),
     ["Зона рейтингу", result.input.ratingZone],
     ["Кваліфікаційний рівень", levelLabel(result.input.level)],
@@ -823,6 +890,7 @@ async function copySummary() {
   const summary = createTextReport(result, config, {
     isGross: isGrossCalculator(),
     hasReliablePaymentSchedule: hasReliablePaymentSchedule(),
+    showEffectiveHourlyPay: isHourlyPayCalculator(),
     formatCurrency,
     roundMoney,
     levelLabel
@@ -858,6 +926,7 @@ function addScenario() {
     basePay: currentResult.basePay,
     tenurePay: currentResult.tenurePay,
     tax: currentResult.tax,
+    effectiveHourlyPay: currentResult.effectiveHourlyPay,
     createdAt: new Date().toLocaleString("uk-UA")
   };
 
@@ -872,6 +941,57 @@ function clearScenarios() {
   saveScenarios(calculatorType, []);
   renderScenarios();
   showStatus("Сценарії очищено");
+}
+
+function saveCurrentCalculationToHistory() {
+  if (!calculatorType || !currentResult) return;
+  const history = loadCalculationHistory(calculatorType);
+  const inputs = readInputs();
+  const next = {
+    id: Date.now(),
+    inputs,
+    totalPay: currentResult.totalPay,
+    effectiveHourlyPay: currentResult.effectiveHourlyPay,
+    createdAt: new Date().toLocaleString("uk-UA")
+  };
+  const previous = history.at(-1);
+  const updated = previous && JSON.stringify(previous.inputs) === JSON.stringify(inputs)
+    ? [...history.slice(0, -1), next]
+    : [...history, next];
+  saveCalculationHistory(calculatorType, updated);
+  renderCalculationHistory();
+  showStatus("Розрахунок збережено в історію цього пристрою");
+}
+
+function clearCalculationHistory() {
+  if (!calculatorType) return;
+  saveCalculationHistory(calculatorType, []);
+  renderCalculationHistory();
+  showStatus("Історію очищено");
+}
+
+function renderCalculationHistory() {
+  if (!calculatorType || !historyList) return;
+  const history = loadCalculationHistory(calculatorType).slice().reverse();
+  if (!history.length) {
+    historyList.innerHTML = `<p class="empty-state">Тут з’являться розрахунки, які ви збережете на цьому пристрої. Коди доступу не зберігаються.</p>`;
+    return;
+  }
+  historyList.innerHTML = history.map((item) => `
+    <article class="scenario-item">
+      <div>
+        <span>${escapeHtml(item.createdAt)}</span>
+        <strong>${formatCurrency(item.totalPay)}</strong>
+        <small>${escapeHtml(item.inputs.month)}, зона ${escapeHtml(item.inputs.ratingZone)}, ${roundMoney(item.inputs.actualHours)} год</small>
+        ${isHourlyPayCalculator() && Number.isFinite(item.effectiveHourlyPay)
+          ? `<small>Ефективна годинна ЗП: ${formatCurrency(item.effectiveHourlyPay)} / год</small>`
+          : ""}
+      </div>
+      <div class="scenario-controls">
+        <button class="ghost-button" type="button" data-load-history="${escapeHtml(item.id)}">Відкрити</button>
+      </div>
+    </article>
+  `).join("");
 }
 
 function renderScenarios() {
@@ -896,9 +1016,13 @@ function renderScenarios() {
             <span>${escapeHtml(scenario.name)}</span>
             <strong>${formatCurrency(scenario.totalPay)}</strong>
             <small>${escapeHtml(scenario.inputs.month)}, зона ${escapeHtml(scenario.inputs.ratingZone)}, ${roundMoney(scenario.inputs.actualHours)} год</small>
+            ${isHourlyPayCalculator() && Number.isFinite(scenario.effectiveHourlyPay)
+              ? `<small>Ефективна годинна ЗП: ${formatCurrency(scenario.effectiveHourlyPay)} / год</small>`
+              : ""}
           </div>
           <div class="scenario-controls">
             <div class="scenario-delta ${deltaClass}">${deltaLabel}</div>
+            <button class="ghost-button" type="button" data-load-scenario="${escapeHtml(scenario.id)}">Відкрити</button>
             <button class="icon-button" type="button" data-delete-scenario="${escapeHtml(scenario.id)}" aria-label="Видалити сценарій">×</button>
           </div>
         </article>
@@ -984,6 +1108,17 @@ function navigateTo(path) {
 }
 
 function handleScenarioClick(event) {
+  const loadButton = event.target.closest("[data-load-scenario]");
+  if (loadButton && calculatorType) {
+    const scenario = loadScenarios(calculatorType).find((item) => item.id === Number(loadButton.dataset.loadScenario));
+    if (!scenario) return;
+    selectedRatingZone = clampRatingZone(scenario.inputs.ratingZone);
+    fillForm(scenario.inputs);
+    renderRatingButtons(selectedRatingZone);
+    update();
+    showStatus("Сценарій відкрито");
+    return;
+  }
   const button = event.target.closest("[data-delete-scenario]");
   if (!button || !calculatorType) return;
   const id = Number(button.dataset.deleteScenario);
@@ -991,6 +1126,18 @@ function handleScenarioClick(event) {
   saveScenarios(calculatorType, scenarios);
   renderScenarios();
   showStatus("Сценарій видалено");
+}
+
+function handleHistoryClick(event) {
+  const button = event.target.closest("[data-load-history]");
+  if (!button || !calculatorType) return;
+  const item = loadCalculationHistory(calculatorType).find((entry) => entry.id === Number(button.dataset.loadHistory));
+  if (!item) return;
+  selectedRatingZone = clampRatingZone(item.inputs.ratingZone);
+  fillForm(item.inputs);
+  renderRatingButtons(selectedRatingZone);
+  update();
+  showStatus("Збережений розрахунок відкрито");
 }
 
 function getRuntimeDefaults(type) {
@@ -1002,6 +1149,10 @@ function getRuntimeDefaults(type) {
 
 function isGrossCalculator(type = calculatorType) {
   return CALCULATORS[type]?.taxMode === "gross";
+}
+
+function isHourlyPayCalculator(type = calculatorType) {
+  return type === "service" || type === "supervisor";
 }
 
 function hasWowBonus(type = calculatorType) {
@@ -1066,6 +1217,7 @@ async function renderAdminPanel() {
   adminPaymentRules.innerHTML = "";
   adminPayslipResult.innerHTML = "";
   adminSettingsHistory.innerHTML = "";
+  adminRatePreview.innerHTML = "";
 
   try {
     const [statsResponse, rulesResponse, settingsResponse] = await Promise.all([
@@ -1178,6 +1330,58 @@ async function saveAdminRates(event) {
     }, "Ставки збережено");
   } catch {
     showStatus("JSON ставок має помилку");
+  }
+}
+
+function previewAdminRates() {
+  try {
+    const overrides = JSON.parse(adminRatesForm.elements.overrides.value || "{}");
+    const types = Object.keys(overrides).filter((type) => CALCULATORS[type]);
+    if (!types.length) {
+      adminRatePreview.innerHTML = `<p class="empty-state">Додайте перевизначення хоча б для одного напрямку, щоб побачити прогноз.</p>`;
+      return;
+    }
+
+    const baseline = types.map((type) => ({
+      type,
+      title: CALCULATORS[type].title,
+      input: getDefaultInputs(type),
+      result: calculatePayroll(getDefaultInputs(type), type)
+    }));
+    const previewPayload = applyAdminSettings(basePayrollPayload, {
+      ...adminSettingsState,
+      overrides
+    });
+
+    configurePayrollData(previewPayload);
+    const previews = baseline.map((item) => ({
+      ...item,
+      nextResult: calculatePayroll(getDefaultInputs(item.type), item.type)
+    }));
+    configurePayrollData(lastPayrollPayload);
+
+    adminRatePreview.innerHTML = previews.map((item) => {
+      const netDifference = item.nextResult.totalPay - item.result.totalPay;
+      const grossDifference = item.nextResult.totalGross - item.result.totalGross;
+      const tone = Math.abs(netDifference) < 0.005 ? "" : " is-warning";
+      return `
+        <article class="admin-row">
+          <div>
+            <strong>${escapeHtml(item.title)}</strong>
+            <small>${escapeHtml(item.input.month)}, ${roundMoney(item.input.actualHours)} год, зона ${item.input.ratingZone}</small>
+          </div>
+          <small>
+            Було: ${formatCurrency(item.result.totalPay)} чистими<br>
+            Стане: ${formatCurrency(item.nextResult.totalPay)} чистими
+          </small>
+          <span class="status-pill${tone}">${netDifference >= 0 ? "+" : ""}${formatCurrency(netDifference)}<br><small>з податком: ${grossDifference >= 0 ? "+" : ""}${formatCurrency(grossDifference)}</small></span>
+        </article>
+      `;
+    }).join("");
+  } catch {
+    adminRatePreview.innerHTML = `<div class="notice warning">JSON ставок має помилку. Виправте його перед переглядом.</div>`;
+  } finally {
+    if (lastPayrollPayload) configurePayrollData(lastPayrollPayload);
   }
 }
 

@@ -128,6 +128,7 @@ export function calculateServicePayroll(input, calculatorType = "service") {
   const tenureHours = config.tenureHoursMode === "separate" ? values.tenureHours : values.actualHours;
   const tenurePay = ((config.tenureBase * tenureRate) / normHours) * tenureHours;
   const totalPay = basePay + tenurePay;
+  const effectiveHourlyPay = calculateEffectiveHourlyPay(totalPay, values.actualHours);
   const baseGross = basePay / (1 - taxRate);
   const baseTax = baseGross - basePay;
   const tenureGross = tenurePay / (1 - taxRate);
@@ -191,6 +192,7 @@ export function calculateServicePayroll(input, calculatorType = "service") {
     totalGross,
     totalTax: tax,
     totalNet: totalPay,
+    effectiveHourlyPay,
     paymentSchedule,
     absencePayments
   };
@@ -248,6 +250,7 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
     ? tenureBasePay
     : tenureGross - tenureTax;
   const totalPay = basePay + tenurePay;
+  const effectiveHourlyPay = calculateEffectiveHourlyPay(totalPay, values.actualHours);
   const tax = baseTax + tenureTax;
   const paymentSchedule = calculatePaymentSchedule(values, {
     normHours,
@@ -304,6 +307,7 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
     totalTax: tax,
     totalPay,
     totalNet: totalPay,
+    effectiveHourlyPay,
     tax,
     paymentSchedule,
     absencePayments
@@ -317,6 +321,12 @@ export function getMonthHours(month, calculatorType = null, workSchedule = null)
     return config.scheduleMonthHours[schedule][month];
   }
   return config?.monthHours?.[month] ?? MONTHS.find((item) => item.name === month)?.hours ?? 165;
+}
+
+export function calculateEffectiveHourlyPay(totalPay, actualHours) {
+  const hours = Number(actualHours);
+  if (!Number.isFinite(hours) || hours <= 0) return null;
+  return roundMoney(Number(totalPay) / hours);
 }
 
 export function getServiceLevelBonus(level, ratingZone) {

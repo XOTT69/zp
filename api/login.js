@@ -10,7 +10,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { role, code } = await readJsonBody(req);
+    const { role, code, password } = await readJsonBody(req);
+    const accessCode = code ?? password;
     const rateLimit = await consumeLoginAttempt(req, role);
     if (!rateLimit.allowed) {
       jsonResponse(res, 429, { error: "Забагато спроб входу. Спробуйте пізніше." }, {
@@ -21,7 +22,7 @@ export default async function handler(req, res) {
     const roleConfig = ACCESS_CONFIG[role];
     const expectedCode = roleConfig ? getRoleCode(role) : "";
 
-    if (!roleConfig || !expectedCode || code !== expectedCode) {
+    if (!roleConfig || !expectedCode || accessCode !== expectedCode) {
       await recordAuthEvent({ role: role || "unknown", success: false });
       jsonResponse(res, 401, { error: expectedCode ? "Невірний код доступу." : "Код доступу для ролі не налаштовано." });
       return;

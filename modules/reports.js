@@ -41,6 +41,9 @@ export function buildTextReport(result, config, options) {
     `Середня ЗП за день: ${options.formatCurrency(result.absencePayments.averageDailyPay)}`,
     `Відпустка/лікарняні/декретні: ${options.formatCurrency(result.absencePayments.total)}`,
     `Години: ${options.roundMoney(result.effectiveHours)} / норма ${result.normHours}`,
+    ...(options.showEffectiveHourlyPay && result.effectiveHourlyPay !== null
+      ? [`Ефективна годинна ЗП: ${options.formatCurrency(result.effectiveHourlyPay)} / год`]
+      : []),
     `Рейтинг: зона ${result.input.ratingZone}, ${options.formatCurrency(result.ratingBonus)}`,
     `Рівень: ${options.levelLabel(result.input.level)}, ${options.formatCurrency(result.levelBonus)}`
   ].join("\n");

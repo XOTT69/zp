@@ -67,7 +67,7 @@
           <p class="eyebrow">Доступ</p>
           <h2 id="accessTitle">Вхід у калькулятор</h2>
           <p>Введіть код ролі, щоб відкрити доступні розрахунки.</p>
-          <form class="access-form" id="accessForm">
+          <form class="access-form" id="accessForm" action="/api/login" method="post">
             <label>
               <span>Роль</span>
               <select name="role" id="accessRole">
@@ -80,9 +80,14 @@
                 <option value="iron">IRON</option>
               </select>
             </label>
+            <input class="password-manager-username" id="accessUsername" name="username" type="text" autocomplete="username" tabindex="-1" aria-hidden="true" readonly />
             <label>
               <span>Код доступу</span>
-              <input name="code" id="accessCode" type="password" autocomplete="current-password" required aria-describedby="accessError" />
+              <input name="password" id="accessCode" type="password" autocomplete="current-password" required aria-describedby="accessError" />
+            </label>
+            <label class="toggle-field">
+              <input name="rememberRole" id="rememberRole" type="checkbox" checked />
+              <span>Запам’ятати роль на цьому пристрої</span>
             </label>
             <button class="primary-button" type="submit">Увійти</button>
             <p class="access-error" id="accessError" role="alert"></p>
@@ -208,8 +213,12 @@
               <span>JSON перевизначень</span>
               <textarea name="overrides" id="adminRateOverrides" rows="12" spellcheck="false"></textarea>
             </label>
-            <button class="primary-button" type="submit">Зберегти ставки</button>
+            <div class="form-actions">
+              <button class="ghost-button" id="previewRatesButton" type="button">Переглянути вплив</button>
+              <button class="primary-button" type="submit">Зберегти ставки</button>
+            </div>
           </form>
+          <div class="admin-table" id="adminRatePreview"></div>
         </section>
 
         <section class="panel admin-panel">
@@ -518,6 +527,7 @@
             <div class="section-heading">
               <p class="eyebrow">Результат</p>
               <h2 id="resultTitle">Деталізація</h2>
+              <p class="rules-version" id="rulesVersion"></p>
             </div>
 
             <div class="result-grid">
@@ -525,17 +535,21 @@
                 <span id="baseResultLabel">До виплати ЗП</span>
                 <strong id="baseNet">0 грн</strong>
               </article>
-              <article>
+              <article id="tenureResultCard">
                 <span id="tenureResultLabel">Премія стаж</span>
                 <strong id="tenureNet">0 грн</strong>
               </article>
-              <article>
+              <article id="ratingResultCard">
                 <span>Ставка рейтингу</span>
                 <strong id="ratingBonus">0 грн</strong>
               </article>
-              <article>
+              <article id="levelResultCard">
                 <span id="levelBonusLabel">Доплата рівня</span>
                 <strong id="levelBonus">0 грн</strong>
+              </article>
+              <article id="effectiveHourlyResult" hidden>
+                <span>Ефективна годинна ЗП</span>
+                <strong id="effectiveHourlyResultValue">—</strong>
               </article>
             </div>
 
@@ -572,6 +586,18 @@
               <button class="ghost-button" id="clearScenariosButton" type="button">Очистити</button>
             </div>
             <div class="scenario-list" id="scenarioList"></div>
+          </section>
+
+          <section class="panel history-panel" aria-labelledby="historyTitle">
+            <div class="section-heading">
+              <p class="eyebrow">На цьому пристрої</p>
+              <h2 id="historyTitle">Останні розрахунки</h2>
+            </div>
+            <div class="scenario-actions">
+              <button class="ghost-button" id="saveHistoryButton" type="button">Зберегти поточний</button>
+              <button class="ghost-button" id="clearHistoryButton" type="button">Очистити історію</button>
+            </div>
+            <div class="scenario-list" id="historyList"></div>
           </section>
         </section>
       </main>

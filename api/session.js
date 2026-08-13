@@ -1,4 +1,4 @@
-import { jsonResponse, readSessionFromCookie } from "./_auth.js";
+import { createSessionCookie, jsonResponse, readSessionFromCookie } from "./_auth.js";
 import { getPayrollPayloadForRole, getSessionForRole } from "./_payroll-data.js";
 
 export default async function handler(req, res) {
@@ -19,5 +19,9 @@ export default async function handler(req, res) {
     authenticated: true,
     session,
     payroll: getPayrollPayloadForRole(session.role)
+  }, {
+    // A successful session check is performed on app start. Reissuing the
+    // signed cookie here makes the session rolling without exposing its code.
+    "Set-Cookie": await createSessionCookie(session.role)
   });
 }

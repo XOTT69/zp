@@ -3,6 +3,8 @@ import { SettingsValidationError, validateAdminSettings } from "../api/_settings
 import { ratingButtonsHtml } from "../modules/calculator-ui.js";
 import { escapeHtml } from "../modules/safe-html.js";
 import loginHandler from "../api/login.js";
+import sessionHandler from "../api/session.js";
+import { SESSION_TTL_SECONDS } from "../api/_auth.js";
 import { savePaymentRule } from "../api/_payment-rules.js";
 
 const failures = [];
@@ -49,6 +51,10 @@ check("login API invalid code", failedLoginResponse.statusCode, 401);
 const loginResponse = await callLogin({ role: "operator", code: "verification-code" }, "203.0.113.78");
 check("login API success", loginResponse.statusCode, 200);
 check("login API sets cookie", Boolean(loginResponse.headers["Set-Cookie"]), true);
+check("login session lasts 30 days", SESSION_TTL_SECONDS, 60 * 60 * 24 * 30);
+const sessionResponse = await callSession(loginResponse.headers["Set-Cookie"]);
+check("session API restores role", sessionResponse.statusCode, 200);
+check("session API refreshes cookie", Boolean(sessionResponse.headers["Set-Cookie"]), true);
 
 let limitedResponse;
 for (let attempt = 0; attempt < 11; attempt += 1) {
@@ -124,5 +130,18 @@ async function callLogin(body, ip) {
     set statusCode(value) { result.statusCode = value; }
   };
   await loginHandler(req, res);
+  return result;
+}
+
+async function callSession(cookie) {
+  const req = { method: "GET", headers: { cookie } };
+  const result = { statusCode: 0, headers: {}, body: "" };
+  const res = {
+    setHeader(key, value) { result.headers[key] = value; },
+    end(value = "") { result.body = value; },
+    get statusCode() { return result.statusCode; },
+    set statusCode(value) { result.statusCode = value; }
+  };
+  await sessionHandler(req, res);
   return result;
 }
