@@ -1,6 +1,6 @@
-import { mountRateEditor } from './modules/admin-rate-editor.js?v=65';
-import { parseHours, validatePayrollInputs } from "./modules/input-validation.js?v=65";
-import { createCalculationRecord, resolveRateVersion } from "./modules/calculation-records.js?v=65";
+import { mountRateEditor } from './modules/admin-rate-editor.js?v=66';
+import { parseHours, validatePayrollInputs } from "./modules/input-validation.js?v=66";
+import { createCalculationRecord, resolveRateVersion } from "./modules/calculation-records.js?v=66";
 import {
   CALCULATORS,
   LEVELS,
@@ -10,18 +10,18 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=65";
-import { endSession, fetchSession, loginWithCode } from "./modules/auth-client.js?v=65";
+} from "./calculator.js?v=66";
+import { endSession, fetchSession, loginWithCode } from "./modules/auth-client.js?v=66";
 import {
   adminPaymentRulesHtml,
   adminRecentHtml,
   adminRolesHtml,
   adminStatsHtml,
   settingsHistoryHtml
-} from "./modules/admin-ui.js?v=65";
-import { clampRatingZone as clampZone, ratingButtonsHtml } from "./modules/calculator-ui.js?v=65";
-import { buildTextReport as createTextReport, reportHtml } from "./modules/reports.js?v=65";
-import { escapeHtml } from "./modules/safe-html.js?v=65";
+} from "./modules/admin-ui.js?v=66";
+import { clampRatingZone as clampZone, ratingButtonsHtml } from "./modules/calculator-ui.js?v=66";
+import { buildTextReport as createTextReport, reportHtml } from "./modules/reports.js?v=66";
+import { escapeHtml } from "./modules/safe-html.js?v=66";
 import {
   MAX_SCENARIOS,
   setStorageIdentity,
@@ -35,7 +35,7 @@ import {
   savePreferredRole,
   saveScenarios,
   saveTheme
-} from "./modules/storage.js?v=65";
+} from "./modules/storage.js?v=66";
 
 const form = document.querySelector("#calculatorForm");
 const accessView = document.querySelector("#accessView");
@@ -356,6 +356,7 @@ function firstAllowedCalculator() {
 }
 
 function renderAllowedChoices() {
+  homeView.querySelector('.choice-grid').innerHTML=Object.entries(CALCULATORS).filter(([type])=>canAccessCalculator(type)).map(([type,cfg])=>`<a class="choice-card" href="/${escapeHtml(type)}" data-calculator-choice="${escapeHtml(type)}"><span>${escapeHtml(cfg.shortTitle)}</span><strong>${escapeHtml(cfg.title)}</strong><small>${escapeHtml((cfg.scheduleOptions || [{label:'2/2'}]).map(s=>s.label).join(' та '))} · ${cfg.stages?'до / від 3 місяців · ':''}${cfg.reference?'ставки колеги':'правила проєкту'}</small></a>`).join('');
   document.querySelectorAll("[data-calculator-choice]").forEach((choice) => {
     const type = choice.dataset.calculatorChoice;
     choice.hidden = !canAccessCalculator(type);
