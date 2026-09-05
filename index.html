@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Калькулятор ЗП 2/2</title>
+    <title>Калькулятор ЗП</title><meta name="theme-color" content="#176b50" /><link rel="manifest" href="/site.webmanifest" /><link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
     <meta
       name="description"
       content="Калькулятор зарплати для графіка 2/2 за ставками з 01.03.2026"
@@ -12,15 +12,15 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
-    <script src="./theme.js?v=54"></script>
-    <link rel="stylesheet" href="./styles.css?v=54" />
+    <script src="./theme.js?v=65"></script>
+    <link rel="stylesheet" href="./styles.css?v=65" />
   </head>
   <body>
     <a class="skip-link" href="#shellStart">До основного вмісту</a>
     <div class="shell" id="shellStart" tabindex="-1">
       <header class="topbar">
         <div>
-          <p class="eyebrow" id="appEyebrow">Калькулятор ЗП для графіка 2/2</p>
+          <p class="eyebrow" id="appEyebrow">Калькулятор зарплати</p>
           <h1 id="appTitle">Калькулятор ЗП</h1>
         </div>
         <div class="top-actions">
@@ -60,13 +60,21 @@
           <span>IRON</span>
           <strong>ЗП IRON</strong>
         </a>
+<a href="/sz" data-calculator-choice="sz" data-mode-link="sz"><strong>СЗ</strong></a><a href="/psz" data-calculator-choice="psz" data-mode-link="psz"><strong>пСЗ</strong></a><a href="/msb" data-calculator-choice="msb" data-mode-link="msb"><strong>МСБ</strong></a><a href="/meo" data-calculator-choice="meo" data-mode-link="meo"><strong>МЕО</strong></a><a href="/fm" data-calculator-choice="fm" data-mode-link="fm"><strong>ФМ</strong></a><a href="/concierge" data-calculator-choice="concierge" data-mode-link="concierge"><strong>Консьєрж</strong></a><a href="/soft" data-calculator-choice="soft" data-mode-link="soft"><strong>Софт</strong></a>
       </nav>
 
       <section class="access-view" id="accessView" aria-labelledby="accessTitle">
         <div class="access-card">
           <p class="eyebrow">Доступ</p>
           <h2 id="accessTitle">Вхід у калькулятор</h2>
-          <p>Введіть код ролі, щоб відкрити доступні розрахунки.</p>
+          <p>Увійдіть, щоб рахувати й порівнювати всі напрямки.</p>
+          <form id="corporateLogin" class="access-form" hidden>
+            <label><span>Робочий логін</span><input name="login" autocomplete="username" required maxlength="80" /></label>
+            <label id="otpField" hidden><span>Одноразовий код зі Slack</span><input name="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" /></label>
+            <button class="primary-button" type="submit">Отримати код у Slack</button>
+            <button id="restartOtp" type="button" class="ghost-button" hidden>Інший логін / новий код</button>
+            <p id="corporateError" role="status"></p>
+          </form>
           <form class="access-form" id="accessForm" action="/api/login" method="post">
             <label>
               <span>Роль</span>
@@ -159,7 +167,7 @@
             </label>
             <label class="field">
               <span>15 число, годин</span>
-              <input name="firstHalfHours" type="number" min="0" step="0.5" inputmode="decimal" />
+              <input name="firstHalfHours" type="text" inputmode="decimal" />
             </label>
             <label class="field">
               <span>31 число, сума</span>
@@ -167,7 +175,7 @@
             </label>
             <label class="field">
               <span>31 число, годин</span>
-              <input name="secondHalfHours" type="number" min="0" step="0.5" inputmode="decimal" />
+              <input name="secondHalfHours" type="text" inputmode="decimal" />
             </label>
             <label class="field">
               <span>07 число, сума</span>
@@ -179,7 +187,7 @@
             </label>
             <label class="field">
               <span>Стаж, годин</span>
-              <input name="tenureHours" type="number" min="0" step="0.5" inputmode="decimal" />
+              <input name="tenureHours" type="text" inputmode="decimal" />
             </label>
             <label class="field">
               <span>Коментар</span>
@@ -197,7 +205,7 @@
           </div>
           <form class="admin-rule-form" id="adminVersionForm">
             <label class="field"><span>Назва версії</span><input name="label" type="text" maxlength="120" /></label>
-            <label class="field"><span>Оновлено</span><input name="updatedAt" type="date" /></label>
+            <label class="field"><span>Оновлено</span><input name="updatedAt" type="date" /></label><label class="field"><span>Діє з першого числа місяця</span><input name="effectiveFrom" type="date" required /></label>
             <label class="field full"><span>Коментар</span><input name="note" type="text" maxlength="240" /></label>
             <button class="primary-button" type="submit">Зберегти версію</button>
           </form>
@@ -209,10 +217,12 @@
             <h2>Керування ставками напрямків</h2>
           </div>
           <form class="admin-rule-form" id="adminRatesForm">
+            <div class="full" id="adminRateEditor"></div>
+            <details class="full"><summary>Розширене редагування JSON</summary>
             <label class="field full">
               <span>JSON перевизначень</span>
               <textarea name="overrides" id="adminRateOverrides" rows="12" spellcheck="false"></textarea>
-            </label>
+            </label></details>
             <div class="form-actions">
               <button class="ghost-button" id="previewRatesButton" type="button">Переглянути вплив</button>
               <button class="primary-button" type="submit">Зберегти ставки</button>
@@ -342,8 +352,12 @@
             <h2 id="inputTitle">Параметри розрахунку</h2>
           </div>
 
+          <div id="savedRecordNotice" class="notice info" hidden>Збережений розрахунок: сума та правила зафіксовані. <button id="recalculateRecord" type="button">Перерахувати за поточними правилами</button></div>
           <form id="calculatorForm">
             <div class="form-grid">
+              <label class="field full"><span>Джерело правил</span><select name="rulesSource" id="rulesSource"><option value="our">Наші правила</option><option value="colleague">Калькулятор колеги · звірка 05.09.2026</option></select></label>
+              <label class="field full" id="stageField" hidden><span>Стаж на посаді</span><select name="stage"><option value="after3">Від 3 місяців</option><option value="before3">До 3 місяців</option></select></label>
+              <label class="field"><span>Рік</span><select name="year" id="year"><option>2025</option><option selected>2026</option><option>2027</option></select></label>
               <label class="field">
                 <span>Місяць</span>
                 <select name="month" id="month"></select>
@@ -351,7 +365,7 @@
 
               <label class="field">
                 <span>Фактичні години</span>
-                <input name="actualHours" type="number" min="0" step="0.5" inputmode="decimal" />
+                <input name="actualHours" type="text" inputmode="decimal" />
               </label>
 
               <fieldset class="field full schedule-toggle" data-feature="workSchedule">
@@ -383,6 +397,10 @@
                 <div class="segmented" id="ratingZoneGroup"></div>
               </fieldset>
 
+                <label class="field">
+                  <span>Стаж, років</span>
+                  <input name="tenureYears" type="number" min="0" max="15" step="1" inputmode="numeric" />
+                </label>
               <label class="field">
                 <span>Кваліфікаційний рівень</span>
                 <select name="level" id="level"></select>
@@ -403,21 +421,21 @@
             </div>
 
             <details class="input-drawer">
-              <summary>Доплати, утримання і стаж</summary>
+              <summary>Доплати й утримання</summary>
               <div class="form-grid drawer-grid">
                 <label class="field">
                   <span>Нічні години</span>
-                  <input name="nightHours" type="number" min="0" step="0.5" inputmode="decimal" />
+                  <input name="nightHours" type="text" inputmode="decimal" />
                 </label>
 
                 <label class="field">
                   <span>Святкові години</span>
-                  <input name="holidayHours" type="number" min="0" step="0.5" inputmode="decimal" />
+                  <input name="holidayHours" type="text" inputmode="decimal" />
                 </label>
 
                 <label class="field">
                   <span>Оплата X2, години</span>
-                  <input name="doubleHours" type="number" min="0" step="0.5" inputmode="decimal" />
+                  <input name="doubleHours" type="text" inputmode="decimal" />
                 </label>
 
                 <label class="field mode-field" data-feature="bonus">
@@ -435,14 +453,11 @@
                   <input name="taxiAmount" type="number" min="0" step="1" inputmode="decimal" />
                 </label>
 
-                <label class="field">
-                  <span>Стаж, років</span>
-                  <input name="tenureYears" type="number" min="0" max="15" step="1" inputmode="numeric" />
-                </label>
+
 
                 <label class="field" data-feature="tenureHours">
                   <span>Години для стажу</span>
-                  <input name="tenureHours" type="number" min="0" step="0.5" inputmode="decimal" />
+                  <input name="tenureHours" type="text" inputmode="decimal" />
                 </label>
               </div>
             </details>
@@ -452,12 +467,12 @@
               <div class="form-grid drawer-grid">
                 <label class="field">
                   <span>Годин до 15-го</span>
-                  <input name="firstHalfHours" type="number" min="0" step="0.5" inputmode="decimal" />
+                  <input name="firstHalfHours" type="text" inputmode="decimal" />
                 </label>
 
                 <label class="field">
                   <span>Годин 16-30/31</span>
-                  <input name="secondHalfHours" type="number" min="0" step="0.5" inputmode="decimal" />
+                  <input name="secondHalfHours" type="text" inputmode="decimal" />
                 </label>
 
                 <label class="field">
@@ -515,7 +530,7 @@
         </section>
 
         <section class="result-stack" aria-label="Результати">
-          <div class="visual-panel">
+          <div class="visual-panel" hidden>
             <img src="./assets/payroll-dashboard.png" alt="" />
             <div>
               <p class="eyebrow">Сервіс</p>
@@ -576,6 +591,7 @@
             <p class="status" id="statusMessage" role="status"></p>
           </section>
 
+          <section class="panel"><h2>Усі напрямки за цими параметрами</h2><p class="comparison-note">Однакові години, колір зони, рівень і стаж. Напрямки з іншими умовами позначені окремо.</p><div class="table-scroll" id="directionComparison"></div></section>
           <section class="panel scenario-panel" aria-labelledby="scenarioTitle">
             <div class="section-heading">
               <p class="eyebrow">Сценарії</p>
@@ -604,6 +620,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <script type="module" src="./app.js?v=54"></script>
+    <script type="module" src="./app.js?v=65"></script>
   </body>
 </html>

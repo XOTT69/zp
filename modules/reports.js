@@ -31,7 +31,8 @@ export function buildTextReport(result, config, options) {
     : ["Виплати по датах: у донавчанні"];
 
   return [
-    `${config.title}, ${result.input.month}`,
+    `${config.title}, ${result.input.month} ${result.input.year || 2026}`,
+    `Правила: ${options.rulesLabel || config.source}`,
     `Загальна сума до виплати: ${options.formatCurrency(result.totalPay)}`,
     `ЗП: ${options.formatCurrency(result.basePay)}`,
     `Стаж: ${options.formatCurrency(result.tenurePay)}`,

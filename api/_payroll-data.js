@@ -1,3 +1,4 @@
+import { makeReferenceCalculators } from "./_reference-rates.js";
 export const MONTHS = [
   { name: "Січень", hours: 165 },
   { name: "Лютий", hours: 154 },
@@ -403,6 +404,11 @@ export const PAYROLL_CONFIG = {
   }
 };
 
+export const REFERENCE_CALCULATORS = makeReferenceCalculators(PAYROLL_CONFIG.calculators);
+for (const [key, config] of Object.entries(REFERENCE_CALCULATORS)) {
+  if (!PAYROLL_CONFIG.calculators[key]) PAYROLL_CONFIG.calculators[key] = config;
+}
+
 export const ACCESS_CONFIG = {
   admin: {
     label: "Адмін",
@@ -455,7 +461,8 @@ export function getSessionForRole(role) {
     role,
     label: config.label,
     isAdmin: Boolean(config.isAdmin),
-    allowedCalculators: [...config.allowedCalculators]
+    // Every authenticated colleague can compare every direction. Editing stays admin-only.
+    allowedCalculators: [...new Set([...config.allowedCalculators, ...Object.keys(PAYROLL_CONFIG.calculators)])]
   };
 }
 
@@ -466,6 +473,8 @@ export function getPayrollPayloadForRole(role) {
     months: MONTHS,
     levels: LEVELS,
     config: {
+      referenceCalculators: REFERENCE_CALCULATORS,
+      dataYear: 2026,
       defaultTaxRate: PAYROLL_CONFIG.defaultTaxRate,
       taxiDivisor: PAYROLL_CONFIG.taxiDivisor,
       maxRatingZone: PAYROLL_CONFIG.maxRatingZone,

@@ -1,3 +1,6 @@
+import { mountRateEditor } from './modules/admin-rate-editor.js?v=65';
+import { parseHours, validatePayrollInputs } from "./modules/input-validation.js?v=65";
+import { createCalculationRecord, resolveRateVersion } from "./modules/calculation-records.js?v=65";
 import {
   CALCULATORS,
   LEVELS,
@@ -7,20 +10,21 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=53";
-import { endSession, fetchSession, loginWithCode } from "./modules/auth-client.js?v=53";
+} from "./calculator.js?v=65";
+import { endSession, fetchSession, loginWithCode } from "./modules/auth-client.js?v=65";
 import {
   adminPaymentRulesHtml,
   adminRecentHtml,
   adminRolesHtml,
   adminStatsHtml,
   settingsHistoryHtml
-} from "./modules/admin-ui.js?v=53";
-import { clampRatingZone as clampZone, ratingButtonsHtml } from "./modules/calculator-ui.js?v=53";
-import { buildTextReport as createTextReport, reportHtml } from "./modules/reports.js?v=53";
-import { escapeHtml } from "./modules/safe-html.js?v=53";
+} from "./modules/admin-ui.js?v=65";
+import { clampRatingZone as clampZone, ratingButtonsHtml } from "./modules/calculator-ui.js?v=65";
+import { buildTextReport as createTextReport, reportHtml } from "./modules/reports.js?v=65";
+import { escapeHtml } from "./modules/safe-html.js?v=65";
 import {
   MAX_SCENARIOS,
+  setStorageIdentity,
   loadCalculationHistory,
   loadCalculatorInputs,
   loadPreferredRole,
@@ -31,7 +35,7 @@ import {
   savePreferredRole,
   saveScenarios,
   saveTheme
-} from "./modules/storage.js?v=53";
+} from "./modules/storage.js?v=65";
 
 const form = document.querySelector("#calculatorForm");
 const accessView = document.querySelector("#accessView");
@@ -93,9 +97,9 @@ const tenureResultCard = document.querySelector("#tenureResultCard");
 const ratingResultCard = document.querySelector("#ratingResultCard");
 const levelResultCard = document.querySelector("#levelResultCard");
 const toast = document.querySelector("#toast");
-const APP_EYEBROW = "Калькулятор ЗП для графіка 2/2";
-const ACTIVE_ACCESS_ROLES = new Set(["admin", "operator", "supervisor", "level4", "xd", "video", "iron"]);
-const ACTIVE_CALCULATOR_KEYS = new Set(["service", "supervisor", "level4", "xd", "video", "iron"]);
+const APP_EYEBROW = "Розрахунок і порівняння зарплат";
+const ACTIVE_ACCESS_ROLES = new Set(["admin", "operator", "supervisor", "level4", "xd", "video", "iron", "sz", "psz", "msb", "meo", "fm", "concierge", "soft"]);
+const ACTIVE_CALCULATOR_KEYS = new Set(["service", "supervisor", "level4", "xd", "video", "iron", "sz", "psz", "msb", "meo", "fm", "concierge", "soft"]);
 
 let calculatorType = null;
 let selectedRatingZone = 1;
@@ -106,6 +110,10 @@ let basePayrollPayload = null;
 let lastPayrollPayload = null;
 let activeSettings = {};
 let adminSettingsState = {};
+let activeCalculationPayload = null;
+let selectedVersion = null;
+let savedRecord = null;
+let configUnavailable = false;
 
 init();
 
@@ -117,6 +125,9 @@ async function init() {
   accessForm.addEventListener("submit", handleAccessSubmit);
   accessRole.addEventListener("change", syncPasswordManagerUsername);
   form.addEventListener("input", update);
+  window.addEventListener("storage-failed", () => showStatus("Браузер не зміг зберегти дані. Звільніть місце або скопіюйте звіт."));
+  document.querySelector("#recalculateRecord").addEventListener("click", () => { savedRecord = null; form.inert = false; document.querySelector("#savedRecordNotice").hidden = true; update(); });
+  initCorporateLogin();
   form.addEventListener("change", handleFormChange);
   ratingZoneGroup.addEventListener("click", handleRatingClick);
   resetButton.addEventListener("click", reset);
@@ -156,6 +167,7 @@ async function hydrateSession() {
     const { data } = await fetchSession();
     if (!data.authenticated) return;
     accessSession = data.session;
+    setStorageIdentity(accessSession.subject);
     basePayrollPayload = data.payroll;
     lastPayrollPayload = await applyRemoteConfig(basePayrollPayload);
     configurePayrollData(lastPayrollPayload);
@@ -166,6 +178,8 @@ async function hydrateSession() {
 }
 
 function renderRoute() {
+  savedRecord = null; form.inert = false; document.querySelector("#savedRecordNotice").hidden = true;
+  if (lastPayrollPayload) configurePayrollData(lastPayrollPayload);
   if (!accessSession) {
     if (window.location.pathname !== "/login") {
       history.replaceState({}, "", "/login");
@@ -306,6 +320,7 @@ async function handleAccessSubmit(event) {
     }
 
     accessSession = data.session;
+    setStorageIdentity(accessSession.subject);
     basePayrollPayload = data.payroll;
     lastPayrollPayload = await applyRemoteConfig(basePayrollPayload);
     configurePayrollData(lastPayrollPayload);
@@ -324,9 +339,10 @@ async function handleAccessSubmit(event) {
 }
 
 async function logout() {
+  try { await endSession(); } catch { showStatus("Не вдалося вийти: перевірте інтернет і повторіть. Сесія ще активна."); return; }
   accessSession = null;
+  setStorageIdentity(null);
   lastTrackedView = "";
-  await endSession();
   navigateTo("/login");
   renderRoute();
 }
@@ -398,6 +414,10 @@ function renderModeFields() {
   document.querySelectorAll("[data-feature='tenureHours']").forEach((field) => {
     field.hidden = !hasTenureHoursInput();
   });
+  const cfg = CALCULATORS[calculatorType];
+  const stage = cfg.stages?.[form.elements.stage.value] || {};
+  for (const [name,hidden] of [['nightHours',cfg.hasNight===false],['doubleHours',cfg.hasDouble===false],['holidayHours',cfg.reference],['tenureYears',stage.noTenure]]) form.elements[name].closest('label').hidden=Boolean(hidden);
+  form.elements.level.disabled=Boolean(stage.noQualification);
   renderScheduleOptions();
   renderBonusInput();
   renderDeductionInput();
@@ -405,7 +425,7 @@ function renderModeFields() {
 
 function renderModeLabels() {
   const taxLabel = `Податок ${formatPercent(CALCULATORS[calculatorType].taxRate)}`;
-  setText("#totalMainLabel", "Загальна сума до виплати");
+  setText("#totalMainLabel", "На руки");
   setText("#totalGrossLabel", isGrossCalculator() ? "Разом з податком" : "Орієнтовно з податком");
   setText("#totalTaxLabel", taxLabel);
   setText("#baseResultLabel", isGrossCalculator() ? "ЗП чистими" : "До виплати ЗП");
@@ -441,9 +461,45 @@ function fillForm(inputs) {
 
 function update() {
   if (!calculatorType) return;
+  if (savedRecord) return;
+  const year = Number(form.elements.year.value);
+  const month = form.elements.month.value;
+  const source = form.elements.rulesSource.value;
+  const period = `${year}-${String(MONTHS.findIndex(m=>m.name===month)+1).padStart(2,'0')}`;
+  selectedVersion = resolveRateVersion(activeSettings, period);
+  if (year !== 2026 || (!selectedVersion && source === 'our') || configUnavailable) {
+    invalidateResult(configUnavailable ? 'Не вдалося завантажити актуальні правила. Оновіть сторінку.' : 'Для цього періоду немає підтверджених правил і норм годин.'); return;
+  }
+  let payload = source === 'colleague'
+    ? {...lastPayrollPayload, config:{...lastPayrollPayload.config,calculators:{...lastPayrollPayload.config.calculators,...basePayrollPayload.config.referenceCalculators}}}
+    : applyAdminSettings(basePayrollPayload,selectedVersion);
+  // Payment calibrations are a separate, year-specific dataset.
+  if (source === 'our') for (const [key,cfg] of Object.entries(payload.config.calculators)) {
+    cfg.paymentMonthlyRules = lastPayrollPayload.config.calculators[key]?.paymentMonthlyRules;
+  }
+  activeCalculationPayload = payload;
+  configurePayrollData(payload);
+  renderModeLabels();
+  renderModeFields();
+  document.querySelector('#stageField').hidden = !CALCULATORS[calculatorType].stages;
+  form.elements.salary.value = getDefaultInputs(calculatorType).salary;
   const inputs = readInputs();
+  const errors = validatePayrollInputs(inputs);
+  form.querySelectorAll('.field-error,.hour-hint').forEach(el=>el.remove());
+  for (const field of form.querySelectorAll('input')) {
+    field.removeAttribute('aria-invalid');
+    if (errors[field.name]) {
+      field.setAttribute('aria-invalid','true');
+      const message=document.createElement('small'); message.className='field-error'; message.textContent=errors[field.name]; field.after(message);
+    } else if (/Hours$/.test(field.name)) {
+      const hint=parseHours(field.value).hint;
+      if(hint) { const message=document.createElement('small');message.className='hour-hint';message.textContent=hint;field.after(message); }
+    }
+  }
+  if (Object.keys(errors).length) { invalidateResult('Виправте виділені поля — результат не розраховано.'); return; }
   const result = calculatePayroll(inputs, calculatorType);
   currentResult = result;
+  for(const button of [copyButton,printButton,addScenarioButton,saveHistoryButton]) button.disabled=false;
   saveInputs(calculatorType, inputs);
   renderResult(result);
   renderValidation(result);
@@ -452,9 +508,11 @@ function update() {
   renderReport(result);
   renderScenarios();
   renderCalculationHistory();
+  renderDirectionComparison(inputs);
 }
 
 function handleFormChange(event) {
+  if (event.target?.name === "rulesSource") { update(); renderRatingButtons(clampRatingZone(selectedRatingZone)); renderModeFields(); }
   if (event.target?.name === "month") {
     applyMonthTemplate(calculatorType, event.target.value);
   }
@@ -479,16 +537,19 @@ function readInputs() {
   const data = new FormData(form);
   const defaults = getDefaultInputs(calculatorType);
   return {
+    year: Number(data.get("year")),
+    stage: data.get("stage"),
+    rulesSource: data.get("rulesSource"),
     month: data.get("month"),
     workSchedule: hasWorkScheduleInput() ? data.get("workSchedule") : defaults.workSchedule,
     actualHours: data.get("actualHours"),
     testsHigh: hasTestsInput() && form.elements.testsHigh.checked,
     ratingZone: clampRatingZone(selectedRatingZone),
-    level: data.get("level"),
+    level: form.elements.level.value,
     salary: defaults.salary,
-    nightHours: data.get("nightHours"),
-    holidayHours: data.get("holidayHours"),
-    doubleHours: data.get("doubleHours"),
+    nightHours: CALCULATORS[calculatorType]?.hasNight === false ? 0 : data.get("nightHours"),
+    holidayHours: CALCULATORS[calculatorType]?.reference ? 0 : data.get("holidayHours"),
+    doubleHours: CALCULATORS[calculatorType]?.hasDouble === false ? 0 : data.get("doubleHours"),
     wowCases: hasBonusInput() ? data.get("wowCases") : 0,
     fines: data.get("fines"),
     taxiAmount: data.get("taxiAmount"),
@@ -544,7 +605,8 @@ function renderEffectiveHourlyPay(result) {
 }
 
 function renderRulesVersion() {
-  const version = activeSettings.version;
+  if (form.elements.rulesSource.value === "colleague" || CALCULATORS[calculatorType]?.reference) { rulesVersion.textContent="Джерело: калькулятор колеги · звірено 05.09.2026. Не затверджено роботодавцем."; return; }
+  const version = savedRecord?.version || selectedVersion?.version || activeSettings.version;
   rulesVersion.textContent = version?.label
     ? `${version.label}${version.updatedAt ? ` · оновлено ${version.updatedAt}` : ""}`
     : "Базові правила калькулятора";
@@ -560,9 +622,11 @@ function renderValidation(result) {
 function buildValidationMessages(result) {
   const messages = [];
   const input = result.input;
-  const version = activeSettings.version;
+  const version = savedRecord?.version || selectedVersion?.version || activeSettings.version;
 
-  if (version?.label) {
+  if (CALCULATORS[calculatorType]?.reference) {
+    messages.push({tone:'info',text:'Ставки з калькулятора колеги, звірка 05.09.2026. Потребують підтвердження роботодавцем.'});
+  } else if (version?.label) {
     const updated = version.updatedAt ? ` · оновлено ${version.updatedAt}` : "";
     messages.push({ tone: "success", text: `${version.label}${updated}` });
   }
@@ -629,7 +693,7 @@ function formulaRows(result) {
   const rows = [
     {
       label: "Версія правил",
-      formula: `${activeSettings.version?.label ?? "Базові правила"}${activeSettings.version?.updatedAt ? `, оновлено ${activeSettings.version.updatedAt}` : ""}`
+      formula: rulesVersion.textContent
     },
     {
       label: "Графік і норма",
@@ -700,6 +764,8 @@ function formulaRows(result) {
     });
   }
 
+  if (result.functionalBonus) rows.push({label:"Функціональна надбавка",formula:`${formatCurrency(result.functionalBonus)} / ${result.normHours} × ${result.effectiveHours} год`});
+
   rows.push({
     label: "Підсумок",
     formula: `${formatCurrency(result.basePay)} + ${formatCurrency(result.tenurePay)} = ${formatCurrency(result.totalPay)}`
@@ -709,13 +775,16 @@ function formulaRows(result) {
 }
 
 function renderPaymentSchedule(result) {
+
   const schedule = result.paymentSchedule;
   const absence = result.absencePayments;
   if (form.elements.averageDailyPay) {
     form.elements.averageDailyPay.value = roundMoney(absence.averageDailyPay);
   }
 
-  if (!hasReliablePaymentSchedule()) {
+  if (activeCalculationPayload?.config.calculators[calculatorType]?.paymentScheduleMode === "unverified") {
+    paymentGrid.innerHTML = `<p class="empty-state">Дати й суми окремих виплат для цих правил ще не підтверджені.</p>`;
+  } else if (!hasReliablePaymentSchedule()) {
     paymentGrid.innerHTML = `
       <article class="payment-card payment-card-muted">
         <span>У донавчанні</span>
@@ -836,7 +905,7 @@ function renderReport(result) {
 }
 
 function hasReliablePaymentSchedule() {
-  return calculatorType === "supervisor";
+  return calculatorType === "supervisor" && !CALCULATORS[calculatorType]?.reference;
 }
 
 function serviceRows(result) {
@@ -885,9 +954,11 @@ function optionalMoneyRows(rows) {
 
 async function copySummary() {
   if (!calculatorType) return;
-  const result = calculatePayroll(readInputs(), calculatorType);
+  if (!currentResult) return;
+  const result = currentResult;
   const config = CALCULATORS[calculatorType];
   const summary = createTextReport(result, config, {
+    rulesLabel: rulesVersion.textContent,
     isGross: isGrossCalculator(),
     hasReliablePaymentSchedule: hasReliablePaymentSchedule(),
     showEffectiveHourlyPay: isHourlyPayCalculator(),
@@ -918,17 +989,7 @@ function addScenario() {
     const shouldReplace = window.confirm(`Можна зберегти максимум ${MAX_SCENARIOS} сценаріїв. Видалити найстаріший і додати новий?`);
     if (!shouldReplace) return;
   }
-  const next = {
-    id: Date.now(),
-    name: `Сценарій ${scenarios.length + 1}`,
-    inputs: readInputs(),
-    totalPay: currentResult.totalPay,
-    basePay: currentResult.basePay,
-    tenurePay: currentResult.tenurePay,
-    tax: currentResult.tax,
-    effectiveHourlyPay: currentResult.effectiveHourlyPay,
-    createdAt: new Date().toLocaleString("uk-UA")
-  };
+  const next = recordCurrent(`${CALCULATORS[calculatorType].shortTitle} · ${scenarios.length+1}`);
 
   scenarios.push(next);
   saveScenarios(calculatorType, scenarios.slice(-MAX_SCENARIOS));
@@ -947,15 +1008,9 @@ function saveCurrentCalculationToHistory() {
   if (!calculatorType || !currentResult) return;
   const history = loadCalculationHistory(calculatorType);
   const inputs = readInputs();
-  const next = {
-    id: Date.now(),
-    inputs,
-    totalPay: currentResult.totalPay,
-    effectiveHourlyPay: currentResult.effectiveHourlyPay,
-    createdAt: new Date().toLocaleString("uk-UA")
-  };
+  const next = recordCurrent(CALCULATORS[calculatorType].shortTitle);
   const previous = history.at(-1);
-  const updated = previous && JSON.stringify(previous.inputs) === JSON.stringify(inputs)
+  const updated = previous && JSON.stringify(previous.inputs) === JSON.stringify(inputs) && JSON.stringify(previous.payroll) === JSON.stringify(next.payroll)
     ? [...history.slice(0, -1), next]
     : [...history, next];
   saveCalculationHistory(calculatorType, updated);
@@ -982,7 +1037,7 @@ function renderCalculationHistory() {
       <div>
         <span>${escapeHtml(item.createdAt)}</span>
         <strong>${formatCurrency(item.totalPay)}</strong>
-        <small>${escapeHtml(item.inputs.month)}, зона ${escapeHtml(item.inputs.ratingZone)}, ${roundMoney(item.inputs.actualHours)} год</small>
+        <small>${escapeHtml(`${item.inputs.month} ${item.inputs.year || 2026}`)}, зона ${escapeHtml(item.inputs.ratingZone)}, ${roundMoney(item.inputs.actualHours)} год</small>
         ${isHourlyPayCalculator() && Number.isFinite(item.effectiveHourlyPay)
           ? `<small>Ефективна годинна ЗП: ${formatCurrency(item.effectiveHourlyPay)} / год</small>`
           : ""}
@@ -1015,7 +1070,7 @@ function renderScenarios() {
           <div>
             <span>${escapeHtml(scenario.name)}</span>
             <strong>${formatCurrency(scenario.totalPay)}</strong>
-            <small>${escapeHtml(scenario.inputs.month)}, зона ${escapeHtml(scenario.inputs.ratingZone)}, ${roundMoney(scenario.inputs.actualHours)} год</small>
+            <small>${escapeHtml(`${scenario.inputs.month} ${scenario.inputs.year || 2026}`)}, зона ${escapeHtml(scenario.inputs.ratingZone)}, ${roundMoney(scenario.inputs.actualHours)} год</small>
             ${isHourlyPayCalculator() && Number.isFinite(scenario.effectiveHourlyPay)
               ? `<small>Ефективна годинна ЗП: ${formatCurrency(scenario.effectiveHourlyPay)} / год</small>`
               : ""}
@@ -1080,7 +1135,7 @@ function getLevelBonusDisplayValue(result) {
 }
 
 function hasTestsInput(type = calculatorType) {
-  return type !== "video" && type !== "iron";
+  return CALCULATORS[type]?.hasTests !== false && (CALCULATORS[type]?.reference || (type !== "video" && type !== "iron"));
 }
 
 function hasWorkScheduleInput(type = calculatorType) {
@@ -1088,7 +1143,7 @@ function hasWorkScheduleInput(type = calculatorType) {
 }
 
 function hasTenureHoursInput(type = calculatorType) {
-  return type === "iron";
+  return type === "iron" && !CALCULATORS[type]?.reference;
 }
 
 function setText(selector, value) {
@@ -1110,19 +1165,15 @@ function navigateTo(path) {
 function handleScenarioClick(event) {
   const loadButton = event.target.closest("[data-load-scenario]");
   if (loadButton && calculatorType) {
-    const scenario = loadScenarios(calculatorType).find((item) => item.id === Number(loadButton.dataset.loadScenario));
+    const scenario = loadScenarios(calculatorType).find((item) => String(item.id) === loadButton.dataset.loadScenario);
     if (!scenario) return;
-    selectedRatingZone = clampRatingZone(scenario.inputs.ratingZone);
-    fillForm(scenario.inputs);
-    renderRatingButtons(selectedRatingZone);
-    update();
-    showStatus("Сценарій відкрито");
+    openRecord(scenario);
     return;
   }
   const button = event.target.closest("[data-delete-scenario]");
   if (!button || !calculatorType) return;
-  const id = Number(button.dataset.deleteScenario);
-  const scenarios = loadScenarios(calculatorType).filter((scenario) => scenario.id !== id);
+  const id = button.dataset.deleteScenario;
+  const scenarios = loadScenarios(calculatorType).filter((scenario) => String(scenario.id) !== id);
   saveScenarios(calculatorType, scenarios);
   renderScenarios();
   showStatus("Сценарій видалено");
@@ -1131,18 +1182,15 @@ function handleScenarioClick(event) {
 function handleHistoryClick(event) {
   const button = event.target.closest("[data-load-history]");
   if (!button || !calculatorType) return;
-  const item = loadCalculationHistory(calculatorType).find((entry) => entry.id === Number(button.dataset.loadHistory));
+  const item = loadCalculationHistory(calculatorType).find((entry) => String(entry.id) === button.dataset.loadHistory);
   if (!item) return;
-  selectedRatingZone = clampRatingZone(item.inputs.ratingZone);
-  fillForm(item.inputs);
-  renderRatingButtons(selectedRatingZone);
-  update();
-  showStatus("Збережений розрахунок відкрито");
+  openRecord(item);
 }
 
 function getRuntimeDefaults(type) {
   return {
     ...getDefaultInputs(type),
+    year: new Date().getFullYear(), rulesSource: "our", stage: "after3",
     month: MONTHS[new Date().getMonth()]?.name ?? getDefaultInputs(type).month
   };
 }
@@ -1152,7 +1200,7 @@ function isGrossCalculator(type = calculatorType) {
 }
 
 function isHourlyPayCalculator(type = calculatorType) {
-  return type === "service" || type === "supervisor";
+  return Boolean(CALCULATORS[type]);
 }
 
 function hasWowBonus(type = calculatorType) {
@@ -1193,7 +1241,8 @@ function renderScheduleOptions() {
   const options = CALCULATORS[calculatorType]?.scheduleOptions;
   if (!group || !options?.length) return;
 
-  const current = form.elements.workSchedule?.value || getDefaultInputs(calculatorType).workSchedule || options[0].value;
+  const selected = form.elements.workSchedule?.value || getDefaultInputs(calculatorType).workSchedule;
+  const current = options.some(option=>option.value===selected) ? selected : options[0].value;
   group.innerHTML = options
     .map(
       (option) => `
@@ -1271,6 +1320,7 @@ function renderAdminPaymentRules(rules = {}) {
 
 function renderAdminSettings(settings = {}) {
   adminSettingsState = {
+    rateVersions: settings.rateVersions ?? [],
     version: settings.version ?? {},
     overrides: settings.overrides ?? {},
     templates: settings.templates ?? {}
@@ -1279,10 +1329,12 @@ function renderAdminSettings(settings = {}) {
   if (adminVersionForm) {
     adminVersionForm.elements.label.value = adminSettingsState.version.label ?? "";
     adminVersionForm.elements.updatedAt.value = adminSettingsState.version.updatedAt ?? "";
+    adminVersionForm.elements.effectiveFrom.value = adminSettingsState.version.effectiveFrom || "2026-03-01";
     adminVersionForm.elements.note.value = adminSettingsState.version.note ?? "";
   }
   if (adminRatesForm) {
     adminRatesForm.elements.overrides.value = prettyJson(adminSettingsState.overrides);
+    mountRateEditor(document.querySelector("#adminRateEditor"),adminRatesForm.elements.overrides,()=>applyAdminSettings(basePayrollPayload,{overrides:JSON.parse(adminRatesForm.elements.overrides.value || "{}")}).config.calculators);
     adminRatesForm.elements.overrides.placeholder = prettyJson({
       service: {
         salary: 12497,
@@ -1314,6 +1366,7 @@ async function saveAdminVersion(event) {
   await saveAdminSettings({
     ...adminSettingsState,
     version: {
+      effectiveFrom: data.get("effectiveFrom"),
       label: data.get("label"),
       updatedAt: data.get("updatedAt"),
       note: data.get("note")
@@ -1466,7 +1519,7 @@ async function compareAdminPayslip(event) {
     actualHours: data.get("actualHours"),
     testsHigh: false,
     ratingZone: data.get("ratingZone"),
-    level: data.get("level"),
+    level: form.elements.level.value,
     salary: defaults.salary,
     nightHours: data.get("nightHours"),
     holidayHours: 0,
@@ -1612,9 +1665,10 @@ async function applyRemotePaymentRules(payroll) {
   try {
     const response = await fetch("/api/payment-rules", { credentials: "same-origin" });
     const data = await response.json();
-    if (!response.ok) return payroll;
+    if (!response.ok) { configUnavailable = true; return payroll; }
     return applyPaymentRules(payroll, data.rules);
   } catch {
+    configUnavailable = true;
     return payroll;
   }
 }
@@ -1639,6 +1693,7 @@ async function reloadPaymentRules() {
 }
 
 async function applyRemoteConfig(payroll) {
+  configUnavailable = false;
   const withSettings = await applyRemoteSettings(payroll);
   return applyRemotePaymentRules(withSettings);
 }
@@ -1647,11 +1702,12 @@ async function applyRemoteSettings(payroll) {
   try {
     const response = await fetch("/api/settings", { credentials: "same-origin" });
     const data = await response.json();
-    if (!response.ok) return payroll;
+    if (!response.ok) { configUnavailable = true; return payroll; }
     activeSettings = data.settings ?? {};
     adminSettingsState = activeSettings;
     return applyAdminSettings(payroll, activeSettings);
   } catch {
+    configUnavailable = true;
     activeSettings = {};
     adminSettingsState = {};
     return payroll;
@@ -1678,6 +1734,7 @@ function applyAdminSettings(payroll, settings = {}) {
 function mergeCalculatorOverride(config, override = {}) {
   if (!override || typeof override !== "object") return config;
   const next = { ...config };
+  if (Object.keys(override).length) { next.reference=false;next.source="Правила проєкту (зміни адміністратора)"; }
   if (override.tenureBase !== undefined) next.tenureBase = Number(override.tenureBase);
   if (override.taxRate !== undefined) next.taxRate = Number(override.taxRate);
   if (override.salary !== undefined) {
@@ -1769,4 +1826,68 @@ function currentTheme() {
 
 function preferredTheme() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function invalidateResult(message) {
+  currentResult=null;
+  for(const id of ['totalNet','totalGross','totalTax','monthNorm','baseNet','tenureNet','ratingBonus','levelBonus']) setText('#'+id,'—');
+  for(const button of [copyButton,printButton,addScenarioButton,saveHistoryButton]) button.disabled=true;
+  absenceGrid.innerHTML='';
+  effectiveHourlyResult.hidden=true;
+  validationMessages.innerHTML=`<div class="notice warning">${escapeHtml(message)}</div>`;
+  for(const el of [paymentGrid,formulaList,reportPanel,document.querySelector('#breakdown'),document.querySelector('#directionComparison')]) el.innerHTML='';
+}
+function recordCurrent(name) {
+  return createCalculationRecord({type:calculatorType,name,inputs:currentResult.input,result:currentResult,payroll:activeCalculationPayload,version:selectedVersion?.version || activeSettings.version});
+}
+function openRecord(item) {
+  if (!item.result || !item.payroll) { showStatus('Цей старий запис не містить знімка правил. Його сума залишається в історії; точне відновлення недоступне.'); return; }
+  if (item.type && item.type !== calculatorType) navigateTo('/'+item.type);
+  savedRecord=item; activeCalculationPayload=item.payroll; selectedVersion={version:item.version};
+  configurePayrollData(item.payroll); fillForm(item.inputs); selectedRatingZone=item.inputs.ratingZone;
+  renderRatingButtons(selectedRatingZone); renderModeFields(); renderModeLabels(); currentResult=item.result;
+  form.inert=true; document.querySelector('#savedRecordNotice').hidden=false;
+  renderDirectionComparison(item.inputs);
+  renderResult(item.result); renderValidation(item.result); renderFormulaList(item.result); renderPaymentSchedule(item.result); renderReport(item.result);
+  for(const button of [copyButton,printButton]) button.disabled=false;
+}
+function zoneTone(type, zone) {
+  const cfg=CALCULATORS[type];
+  if (cfg?.zoneTones?.[zone]) return cfg.zoneTones[zone];
+  return type==='level4' ? ({1:'green',2:'yellow',3:'red'})[zone] : ({1:'green',2:'lime',3:'yellow',4:'pink',5:'red'})[zone];
+}
+function renderDirectionComparison(inputs) {
+  const tone=zoneTone(calculatorType,inputs.ratingZone);
+  const rows=Object.entries(CALCULATORS).map(([type,cfg])=>{
+    const zone=cfg.ratingZones.length===1 ? cfg.ratingZones[0] : cfg.ratingZones.find(z=>zoneTone(type,z)===tone);
+    const schedule=inputs.workSchedule || '2/2';
+    if(zone===undefined || cfg.scheduleOptions && !cfg.scheduleOptions.some(s=>s.value===schedule)) return `<tr><td>${escapeHtml(cfg.shortTitle)}</td><td colspan="3">Немає відповідної зони або графіка</td></tr>`;
+    const target={...getDefaultInputs(type),...inputs,ratingZone:zone,salary:getDefaultInputs(type).salary,testsHigh:hasTestsInput(type)&&inputs.testsHigh,nightHours:cfg.hasNight===false?0:inputs.nightHours,doubleHours:cfg.hasDouble===false?0:inputs.doubleHours,holidayHours:cfg.reference?0:inputs.holidayHours};
+    const result=calculatePayroll(target,type);
+    return `<tr><td><a href="/${type}">${escapeHtml(cfg.shortTitle)}</a></td><td>${formatCurrency(result.totalPay)}</td><td>${formatCurrency(result.totalPay-currentResult.totalPay)}</td><td>${(cfg.reference?'Колега':'Наші')+(cfg.hasTests===false||cfg.hasNight===false||cfg.hasDouble===false?' · лише доступні доплати':'')}</td></tr>`;
+  });
+  document.querySelector('#directionComparison').innerHTML=`<table class="comparison-table"><thead><tr><th>Напрямок</th><th>На руки</th><th>Різниця</th><th>Правила</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+}
+async function initCorporateLogin() {
+  const corporate=document.querySelector('#corporateLogin');
+  const message=document.querySelector('#corporateError');
+  const otpField=document.querySelector('#otpField');
+  const restart=document.querySelector('#restartOtp');
+  let challengeId=null;
+  try {
+    const response=await fetch('/api/corporate-auth'); const options=await response.json();
+    if(!response.ok) return;
+    corporate.hidden=!options.ldapSlack; accessForm.hidden=!options.roleCode;
+    if(!options.ldapSlack && !options.roleCode) { const notice=document.createElement('p');notice.className='notice warning';notice.textContent='Зверніться до адміністратора для налаштування входу.';corporate.before(notice); }
+  } catch { return; }
+  restart.addEventListener('click',()=>{challengeId=null;otpField.hidden=true;restart.hidden=true;corporate.elements.login.readOnly=false;corporate.elements.otp.value='';corporate.querySelector('[type=submit]').textContent='Отримати код у Slack';});
+  corporate.addEventListener('submit',async event=>{
+    event.preventDefault(); const button=corporate.querySelector('[type=submit]'); button.disabled=true;
+    try {
+      const response=await fetch('/api/corporate-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(challengeId?{action:'verify',challengeId,code:corporate.elements.otp.value}:{action:'request',login:corporate.elements.login.value})});
+      const data=await response.json(); if(!response.ok) throw new Error(data.error || 'Спробуйте ще раз.');
+      if(data.authenticated) { corporate.reset(); await hydrateSession(); navigateTo('/'+firstAllowedCalculator()); }
+      else {challengeId=data.challengeId;otpField.hidden=false;restart.hidden=false;corporate.elements.login.readOnly=true;corporate.elements.otp.focus();button.textContent='Увійти';message.textContent=data.message;}
+    } catch(error) {message.textContent=error.message;} finally {button.disabled=false;}
+  });
 }

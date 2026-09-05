@@ -36,6 +36,34 @@
     {
       "source": "/iron",
       "destination": "/api/page?path=/iron"
+    },
+    {
+      "source": "/sz",
+      "destination": "/api/page?path=/sz"
+    },
+    {
+      "source": "/psz",
+      "destination": "/api/page?path=/psz"
+    },
+    {
+      "source": "/msb",
+      "destination": "/api/page?path=/msb"
+    },
+    {
+      "source": "/meo",
+      "destination": "/api/page?path=/meo"
+    },
+    {
+      "source": "/fm",
+      "destination": "/api/page?path=/fm"
+    },
+    {
+      "source": "/concierge",
+      "destination": "/api/page?path=/concierge"
+    },
+    {
+      "source": "/soft",
+      "destination": "/api/page?path=/soft"
     }
   ],
   "headers": [
@@ -90,7 +118,6 @@
           "value": "public, max-age=31536000, immutable"
         }
       ]
-      
     }
   ]
 }

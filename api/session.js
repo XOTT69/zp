@@ -17,11 +17,11 @@ export default async function handler(req, res) {
 
   jsonResponse(res, 200, {
     authenticated: true,
-    session,
+    session: {...session,subject:sessionCookie.sub || `role:${sessionCookie.role}`},
     payroll: getPayrollPayloadForRole(session.role)
   }, {
     // A successful session check is performed on app start. Reissuing the
     // signed cookie here makes the session rolling without exposing its code.
-    "Set-Cookie": await createSessionCookie(session.role)
+    "Set-Cookie": await createSessionCookie(session.role, sessionCookie)
   });
 }

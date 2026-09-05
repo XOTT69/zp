@@ -16,8 +16,8 @@ export async function getAdminSettings() {
     const response = await redisPipeline([["GET", SETTINGS_KEY]]);
     const stored = response[0]?.result ? JSON.parse(response[0].result) : memorySettings;
     return validateAdminSettings(stored);
-  } catch {
-    return structuredClone(memorySettings);
+  } catch (error) {
+    throw new Error("Сховище правил недоступне. Не використовуйте базові ставки замість актуальних.");
   }
 }
 
@@ -34,10 +34,16 @@ export async function getSettingsHistory(limit = 20) {
 }
 
 export async function saveAdminSettings(settings, meta = {}) {
-  const normalized = validateAdminSettings(settings);
+  let normalized = validateAdminSettings(settings);
   const previous = await getAdminSettings();
   if (JSON.stringify(previous) === JSON.stringify(normalized)) return normalized;
 
+  const versions = [...(previous.rateVersions || [])];
+  if (previous.version.effectiveFrom !== normalized.version.effectiveFrom) {
+    versions.push({version:previous.version,overrides:previous.overrides,templates:previous.templates});
+  }
+  normalized = validateAdminSettings({...normalized,rateVersions:versions.slice(-60)});
+  if (process.env.NODE_ENV === 'production' && !hasRedis()) throw new Error('Для збереження правил потрібне постійне сховище Redis.');
   const revision = createRevision(previous, meta);
   if (hasRedis()) {
     await redisPipeline([
@@ -63,7 +69,9 @@ export async function rollbackAdminSettings(revisionId) {
 
 export function defaultSettings() {
   return {
+    rateVersions: [],
     version: {
+      effectiveFrom: "2026-03-01",
       label: "Правила актуальні з 01.03.2026",
       updatedAt: "2026-07-08",
       note: ""
@@ -124,5 +132,7 @@ async function redisPipeline(commands) {
     body: JSON.stringify(commands)
   });
   if (!response.ok) throw new Error("Redis request failed");
-  return response.json();
+  const results = await response.json();
+  if (!Array.isArray(results) || results.some(r => r.error)) throw new Error("Redis command failed");
+  return results;
 }

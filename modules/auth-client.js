@@ -12,11 +12,8 @@ export async function loginWithCode(role, code) {
 }
 
 export async function endSession() {
-  try {
-    await fetch("/api/logout", { method: "POST", credentials: "same-origin" });
-  } catch {
-    // The client still clears its local session state when the network is unavailable.
-  }
+  const response = await fetch("/api/logout", { method: "POST", credentials: "same-origin" });
+  if (!response.ok) throw new Error('Не вдалося завершити сесію на сервері.');
 }
 
 async function requestJson(url, options) {

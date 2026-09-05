@@ -11,11 +11,12 @@ export async function getPaymentRules() {
     const response = await redis(["GET", RULES_KEY]);
     return response.result ? JSON.parse(response.result) : {};
   } catch {
-    return { ...memoryRules };
+    throw new Error("Сховище правил виплат недоступне.");
   }
 }
 
 export async function savePaymentRule(calculator, month, rule) {
+  if (process.env.NODE_ENV === "production" && !hasRedis()) throw new Error("Для збереження потрібне постійне сховище Redis.");
   const rules = await getPaymentRules();
   const safeCalculator = cleanKey(calculator);
   const safeMonth = cleanKey(month);
@@ -33,6 +34,7 @@ export async function savePaymentRule(calculator, month, rule) {
 
 export async function deletePaymentRule(calculator, month) {
   validateRuleKey(calculator, month);
+  if (process.env.NODE_ENV === "production" && !hasRedis()) throw new Error("Для збереження потрібне постійне сховище Redis.");
   const rules = await getPaymentRules();
   if (rules[calculator]) {
     delete rules[calculator][month];
@@ -79,7 +81,9 @@ async function redis(command) {
     body: JSON.stringify([command])
   });
   if (!response.ok) throw new Error("Redis request failed");
-  return (await response.json())[0];
+  const result = (await response.json())[0];
+  if (!result || result.error) throw new Error("Redis command failed");
+  return result;
 }
 
 function cleanKey(value) {

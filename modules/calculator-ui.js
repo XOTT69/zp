@@ -11,8 +11,8 @@ export function clampRatingZone(calculators, zone, type) {
 export function ratingButtonsHtml(calculators, type, activeZone) {
   return getRatingZones(calculators, type)
     .map((zone) => {
-      const tone = ratingZoneTone(zone, type);
-      const toneLabel = ratingZoneToneLabel(tone);
+      const tone = calculators[type]?.zoneTones?.[zone] || ratingZoneTone(zone, type);
+      const toneLabel = calculators[type]?.zoneLabels?.[zone] || ratingZoneToneLabel(tone);
       return `
         <button
           class="segment rating-zone rating-zone--${tone} ${zone === activeZone ? "is-active" : ""}"
@@ -22,7 +22,7 @@ export function ratingButtonsHtml(calculators, type, activeZone) {
           aria-pressed="${zone === activeZone}"
           aria-label="${zone} зона, ${toneLabel}"
           title="${zone} зона — ${toneLabel}"
-        >${zone}</button>
+        >${zone}<span class="zone-name">${toneLabel}</span></button>
       `;
     })
     .join("");

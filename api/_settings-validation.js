@@ -1,4 +1,4 @@
-const CALCULATORS = new Set(["service", "supervisor", "level4", "xd", "video", "iron"]);
+const CALCULATORS = new Set(["service", "supervisor", "level4", "xd", "video", "iron", "sz", "psz", "msb", "meo", "fm", "concierge", "soft"]);
 const MONTHS = new Set(["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"]);
 const LEVELS = new Set(["level1", "level2", "level3"]);
 const SCHEDULES = new Set(["2/2", "5/2"]);
@@ -43,9 +43,10 @@ export class SettingsValidationError extends Error {
 export function validateAdminSettings(settings) {
   const issues = [];
   assertPlainObject(settings, "settings", issues);
-  rejectUnknownKeys(settings, new Set(["version", "overrides", "templates"]), "settings", issues);
+  rejectUnknownKeys(settings, new Set(["version", "overrides", "templates", "rateVersions"]), "settings", issues);
 
   const normalized = {
+    rateVersions: normalizeRateVersions(settings?.rateVersions, issues),
     version: normalizeVersion(settings?.version, issues),
     overrides: normalizeOverrides(settings?.overrides, issues),
     templates: normalizeTemplates(settings?.templates, issues)
@@ -58,10 +59,13 @@ export function validateAdminSettings(settings) {
 function normalizeVersion(value, issues) {
   const version = value ?? {};
   assertPlainObject(version, "version", issues);
-  rejectUnknownKeys(version, new Set(["label", "updatedAt", "note"]), "version", issues);
+  rejectUnknownKeys(version, new Set(["label", "updatedAt", "note", "effectiveFrom"]), "version", issues);
   const date = String(version.updatedAt || new Date().toISOString().slice(0, 10));
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) issues.push("version.updatedAt має бути датою YYYY-MM-DD.");
+  const effectiveFrom = String(version.effectiveFrom || '2026-03-01');
+  if (!/^\d{4}-(0[1-9]|1[0-2])-01$/.test(effectiveFrom)) issues.push('Початок дії правил має бути першим числом місяця YYYY-MM-01.');
   return {
+    effectiveFrom,
     label: boundedText(version.label || "Правила актуальні з 01.03.2026", 120, "version.label", issues),
     updatedAt: date.slice(0, 10),
     note: boundedText(version.note || "", 240, "version.note", issues)
@@ -200,4 +204,14 @@ const monthKey = (key) => MONTHS.has(key);
 
 function isPlainObject(value) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function normalizeRateVersions(value, issues) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 60) { issues.push('Дозволено до 60 версій правил.'); return []; }
+  return value.map(entry => {
+    assertPlainObject(entry, 'rateVersions', issues);
+    rejectUnknownKeys(entry,new Set(['version','overrides','templates']),'rateVersions',issues);
+    return {version:normalizeVersion(entry?.version,issues),overrides:normalizeOverrides(entry?.overrides,issues),templates:normalizeTemplates(entry?.templates,issues)};
+  });
 }
