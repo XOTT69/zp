@@ -98,9 +98,7 @@ function historyStorageKey(type) {
 
 function migrateSavedInputs(type, saved, defaults) {
   // Migrate only the working form. History and saved scenarios retain their snapshots.
-  if (saved.ruleSourcePolicy !== RULE_SOURCE_POLICY || type === 'video') {
-    saved.rulesSource = defaultRulesSource(type);
-  }
+  saved.rulesSource = defaultRulesSource(type);
   if (type === "supervisor" && Number(saved.firstHalfHours) === 82.5) {
     saved.firstHalfHours = defaults.firstHalfHours;
   }

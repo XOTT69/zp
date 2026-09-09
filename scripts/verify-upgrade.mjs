@@ -95,7 +95,7 @@ storage.saveCalculatorInputs('iron',migrated);
 assert.equal(JSON.parse(localValues.get('zp-2-2-calculator-inputs-user-alice-iron')).ruleSourcePolicy,RULE_SOURCE_POLICY);
 assert.equal(storage.loadCalculatorInputs('iron',ironDefaults,clamp).testsHigh,true);
 storage.saveCalculatorInputs('iron',{...migrated,rulesSource:'our'});
-assert.equal(storage.loadCalculatorInputs('iron',ironDefaults,clamp).rulesSource,'our');
+assert.equal(storage.loadCalculatorInputs('iron',ironDefaults,clamp).rulesSource,'colleague');
 storage.saveCalculatorInputs('video',{rulesSource:'colleague',ratingZone:3});
 assert.equal(storage.loadCalculatorInputs('video',{rulesSource:'our',ratingZone:3},clamp).rulesSource,'our');
 assert.equal(storage.loadCalculationHistory('service')[0].totalPay,123);

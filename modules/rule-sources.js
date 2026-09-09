@@ -1,6 +1,6 @@
 // The project owner chose the colleague's calculator as the primary rate source.
 // Video verification is absent there and keeps the project's existing rules.
-export const RULE_SOURCE_POLICY = 'colleague-primary-v1';
+export const RULE_SOURCE_POLICY = 'primary-only-v2';
 
 export function defaultRulesSource(type) {
   return type === 'video' ? 'our' : 'colleague';

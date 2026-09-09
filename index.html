@@ -12,8 +12,8 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
-    <script src="./theme.js?v=67"></script>
-    <link rel="stylesheet" href="./styles.css?v=67" />
+    <script src="./theme.js?v=68"></script>
+    <link rel="stylesheet" href="./styles.css?v=68" />
   </head>
   <body>
     <a class="skip-link" href="#shellStart">До основного вмісту</a>
@@ -217,7 +217,7 @@
             <h2>Керування ставками напрямків</h2>
           </div>
           <form class="admin-rule-form" id="adminRatesForm">
-            <p class="full">Ці зміни стосуються попередніх правил проєкту та відеоверифікації. Основні ставки колеги зберігаються окремо й не перезаписуються цими налаштуваннями.</p>
+            <p class="full">Ці зміни стосуються попередніх правил проєкту та відеоверифікації. Основні ставки зберігаються окремо й не перезаписуються цими налаштуваннями.</p>
             <div class="full" id="adminRateEditor"></div>
             <details class="full"><summary>Розширене редагування JSON</summary>
             <label class="field full">
@@ -325,7 +325,7 @@
           <div id="savedRecordNotice" class="notice info" hidden>Збережений розрахунок: сума та правила зафіксовані. <button id="recalculateRecord" type="button">Перерахувати за поточними правилами</button></div>
           <form id="calculatorForm">
             <div class="form-grid">
-              <label class="field full"><span>Джерело правил</span><select name="rulesSource" id="rulesSource"><option value="colleague">Калькулятор колеги · основні ставки</option><option value="our">Попередні правила проєкту</option></select></label>
+              <input type="hidden" name="rulesSource" id="rulesSource" value="colleague" />
               <label class="field full" id="stageField" hidden><span>Стаж на посаді</span><select name="stage"><option value="after3">Від 3 місяців</option><option value="before3">До 3 місяців</option></select></label>
               <label class="field"><span>Рік</span><select name="year" id="year"><option>2025</option><option selected>2026</option><option>2027</option></select></label>
               <label class="field">
@@ -590,6 +590,6 @@
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <script type="module" src="./app.js?v=67"></script>
+    <script type="module" src="./app.js?v=68"></script>
   </body>
 </html>

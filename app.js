@@ -1,7 +1,7 @@
-import { defaultRulesSource, withColleagueRules } from './modules/rule-sources.js?v=67';
-import { mountRateEditor } from './modules/admin-rate-editor.js?v=67';
-import { parseHours, validatePayrollInputs } from "./modules/input-validation.js?v=67";
-import { createCalculationRecord, resolveRateVersion } from "./modules/calculation-records.js?v=67";
+import { defaultRulesSource, withColleagueRules } from './modules/rule-sources.js?v=68';
+import { mountRateEditor } from './modules/admin-rate-editor.js?v=68';
+import { parseHours, validatePayrollInputs } from "./modules/input-validation.js?v=68";
+import { createCalculationRecord, resolveRateVersion } from "./modules/calculation-records.js?v=68";
 import {
   CALCULATORS,
   LEVELS,
@@ -11,18 +11,18 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=67";
-import { endSession, fetchSession, loginWithCode } from "./modules/auth-client.js?v=67";
+} from "./calculator.js?v=68";
+import { endSession, fetchSession, loginWithCode } from "./modules/auth-client.js?v=68";
 import {
   adminPaymentRulesHtml,
   adminRecentHtml,
   adminRolesHtml,
   adminStatsHtml,
   settingsHistoryHtml
-} from "./modules/admin-ui.js?v=67";
-import { clampRatingZone as clampZone, ratingButtonsHtml } from "./modules/calculator-ui.js?v=67";
-import { buildTextReport as createTextReport, reportHtml } from "./modules/reports.js?v=67";
-import { escapeHtml } from "./modules/safe-html.js?v=67";
+} from "./modules/admin-ui.js?v=68";
+import { clampRatingZone as clampZone, ratingButtonsHtml } from "./modules/calculator-ui.js?v=68";
+import { buildTextReport as createTextReport, reportHtml } from "./modules/reports.js?v=68";
+import { escapeHtml } from "./modules/safe-html.js?v=68";
 import {
   MAX_SCENARIOS,
   setStorageIdentity,
@@ -36,7 +36,7 @@ import {
   savePreferredRole,
   saveScenarios,
   saveTheme
-} from "./modules/storage.js?v=67";
+} from "./modules/storage.js?v=68";
 
 const form = document.querySelector("#calculatorForm");
 const accessView = document.querySelector("#accessView");
@@ -364,7 +364,7 @@ function firstAllowedCalculator() {
 }
 
 function renderAllowedChoices() {
-  homeView.querySelector('.choice-grid').innerHTML=Object.entries(CALCULATORS).filter(([type])=>canAccessCalculator(type)).map(([type,cfg])=>`<a class="choice-card" href="/${escapeHtml(type)}" data-calculator-choice="${escapeHtml(type)}"><span>${escapeHtml(cfg.shortTitle)}</span><strong>${escapeHtml(cfg.title)}</strong><small>${escapeHtml((cfg.scheduleOptions || [{label:'2/2'}]).map(s=>s.label).join(' та '))} · ${cfg.stages?'до / від 3 місяців · ':''}${cfg.reference?'ставки колеги':'правила проєкту'}</small></a>`).join('');
+  homeView.querySelector('.choice-grid').innerHTML=Object.entries(CALCULATORS).filter(([type])=>canAccessCalculator(type)).map(([type,cfg])=>`<a class="choice-card" href="/${escapeHtml(type)}" data-calculator-choice="${escapeHtml(type)}"><span>${escapeHtml(cfg.shortTitle)}</span><strong>${escapeHtml(cfg.title)}</strong><small>${escapeHtml((cfg.scheduleOptions || [{label:'2/2'}]).map(s=>s.label).join(' та '))}${cfg.stages?' · до / від 3 місяців':''}</small></a>`).join('');
   document.querySelectorAll("[data-calculator-choice]").forEach((choice) => {
     const type = choice.dataset.calculatorChoice;
     choice.hidden = !canAccessCalculator(type);
@@ -473,13 +473,14 @@ function update() {
   if (savedRecord) return;
   const year = Number(form.elements.year.value);
   const month = form.elements.month.value;
-  const source = form.elements.rulesSource.value;
+  const source = defaultRulesSource(calculatorType);
+  form.elements.rulesSource.value = source;
   const period = `${year}-${String(MONTHS.findIndex(m=>m.name===month)+1).padStart(2,'0')}`;
   selectedVersion = resolveRateVersion(activeSettings, period);
   if (year !== 2026 || (!selectedVersion && source === 'our') || configUnavailable) {
     invalidateResult(configUnavailable ? 'Не вдалося завантажити актуальні правила. Оновіть сторінку.' : 'Для цього періоду немає підтверджених правил і норм годин.'); return;
   }
-  if (source === 'colleague') selectedVersion = {version:{label:'Основні ставки колеги · звірка 05.09.2026',updatedAt:'2026-09-05',source:'colleague'}};
+  if (source === 'colleague') selectedVersion = {version:{label:'Ставки · версія від 05.09.2026',updatedAt:'2026-09-05',source:'colleague'}};
   let payload = source === 'colleague'
     ? withColleagueRules(lastPayrollPayload)
     : applyAdminSettings(basePayrollPayload,selectedVersion);
@@ -491,7 +492,6 @@ function update() {
   }
   activeCalculationPayload = payload;
   configurePayrollData(payload);
-  form.elements.rulesSource.closest('label').hidden = calculatorType === 'video';
   renderModeLabels();
   renderModeFields();
   selectedRatingZone = clampRatingZone(selectedRatingZone);
@@ -527,7 +527,6 @@ function update() {
 }
 
 function handleFormChange(event) {
-  if (event.target?.name === "rulesSource") { update(); renderRatingButtons(clampRatingZone(selectedRatingZone)); renderModeFields(); }
   if (event.target?.name === "month") {
     applyMonthTemplate(calculatorType, event.target.value);
   }
@@ -621,7 +620,7 @@ function renderEffectiveHourlyPay(result) {
 }
 
 function renderRulesVersion() {
-  if (CALCULATORS[calculatorType]?.reference) { rulesVersion.textContent="Основні ставки: калькулятор колеги · звірено 05.09.2026."; return; }
+  if (CALCULATORS[calculatorType]?.reference) { rulesVersion.textContent="Ставки · версія від 05.09.2026"; return; }
   const version = savedRecord?.version || selectedVersion?.version || activeSettings.version;
   rulesVersion.textContent = version?.label
     ? `${version.label}${version.updatedAt ? ` · оновлено ${version.updatedAt}` : ""}`
@@ -640,11 +639,9 @@ function buildValidationMessages(result) {
   const input = result.input;
   const version = savedRecord?.version || selectedVersion?.version || activeSettings.version;
 
-  if (CALCULATORS[calculatorType]?.reference) {
-    messages.push({tone:'info',text:'Розрахунок за ставками калькулятора колеги, звіреними 05.09.2026.'});
-  } else if (calculatorType !== 'video') {
-    messages.push({tone:'warning',text:'Вибрано попередні правила проєкту. Для актуального розрахунку виберіть основні ставки колеги.'});
-  } else if (version?.label) {
+  if (savedRecord && !CALCULATORS[calculatorType]?.reference && calculatorType !== 'video') {
+    messages.push({tone:'info',text:'Цей запис збережено за попередніми ставками. Для нового розрахунку натисніть «Перерахувати за поточними правилами».'});
+  } else if (!CALCULATORS[calculatorType]?.reference && version?.label) {
     const updated = version.updatedAt ? ` · оновлено ${version.updatedAt}` : "";
     messages.push({ tone: "success", text: `${version.label}${updated}` });
   }
@@ -1883,9 +1880,9 @@ function renderDirectionComparison(inputs) {
     if(zone===undefined || cfg.scheduleOptions && !cfg.scheduleOptions.some(s=>s.value===schedule)) return `<tr><td>${escapeHtml(cfg.shortTitle)}</td><td colspan="3">Немає відповідної зони або графіка</td></tr>`;
     const target={...getDefaultInputs(type),...inputs,ratingZone:zone,salary:getDefaultInputs(type).salary,testsHigh:hasTestsInput(type)&&inputs.testsHigh,nightHours:cfg.hasNight===false?0:inputs.nightHours,doubleHours:cfg.hasDouble===false?0:inputs.doubleHours,holidayHours:cfg.reference?0:inputs.holidayHours};
     const result=calculatePayroll(target,type);
-    return `<tr><td><a href="/${type}">${escapeHtml(cfg.shortTitle)}</a></td><td>${formatCurrency(result.totalPay)}</td><td>${formatCurrency(result.totalPay-currentResult.totalPay)}</td><td>${(cfg.reference?'Колега':'Наші')+(cfg.hasTests===false||cfg.hasNight===false||cfg.hasDouble===false?' · лише доступні доплати':'')}</td></tr>`;
+    return `<tr><td><a href="/${type}">${escapeHtml(cfg.shortTitle)}</a></td><td>${formatCurrency(result.totalPay)}</td><td>${formatCurrency(result.totalPay-currentResult.totalPay)}</td><td>${cfg.hasTests===false||cfg.hasNight===false||cfg.hasDouble===false?'Лише доступні доплати':'—'}</td></tr>`;
   });
-  document.querySelector('#directionComparison').innerHTML=`<table class="comparison-table"><thead><tr><th>Напрямок</th><th>На руки</th><th>Різниця</th><th>Правила</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  document.querySelector('#directionComparison').innerHTML=`<table class="comparison-table"><thead><tr><th>Напрямок</th><th>На руки</th><th>Різниця</th><th>Умови</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
 }
 async function initCorporateLogin() {
   const corporate=document.querySelector('#corporateLogin');
