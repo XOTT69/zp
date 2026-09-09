@@ -64,6 +64,8 @@ cookie=await createSessionCookie('operator',{authMethod:'ldap-slack',sub:'test.u
 process.env.LDAP_SLACK_ENABLED='false';assert.equal(await readSessionFromCookie(cookie),null);
 assert.equal(escapeLdapFilter('a*)(x=\\\0'), 'a\\2a\\29\\28x=\\5c\\00');
 // Isolated transport doubles: no LDAP, Slack or Redis service is contacted.
+process.env.SLACK_IDENTITY_MODE='email';
+process.env.CORPORATE_AUTH_SOURCE='directory';
 const commands=[];const messages=[];const values=new Map();
 const store=async pipeline=>pipeline.map(command=>{commands.push(command);const [op,key,value]=command;if(op==='INCR')return 1;if(op==='EXPIRE')return 1;if(op==='SET'){values.set(key,value);return 'OK';}if(op==='GET')return values.get(key)||null;if(op==='DEL'){values.delete(key);return 1;}if(op==='EVAL'){const raw=values.get(command[3]);if(!raw)return null;if(JSON.parse(raw).digest!==command[4])return null;values.delete(command[3]);return raw;}throw Error(op);});
 const directory=async login=>({login,email:'test@example.invalid',displayName:'Test'});
@@ -71,7 +73,7 @@ const send=async(method,body)=>{messages.push({method,body});return {user:{id:'U
 const challenge=await startChallenge('test.user','192.0.2.1',{directory,store,send});
 assert.equal(challenge.status,200);assert.equal(messages[1].body.channel,'U_TEST');
 const code=messages[1].body.text.match(/\d{6}/)[0];const stored=JSON.parse(values.get(`zp:otp:${challenge.id}`));assert.equal(stored.digest,challengeDigest(challenge.id,code));assert.ok(!JSON.stringify(challenge).includes(code));
-assert.equal((await finishChallenge(challenge.id,code,{store,directory})).sub,'test.user');assert.equal(await finishChallenge(challenge.id,code,{store,directory}),null);
+assert.equal((await finishChallenge(challenge.id,code,{store,directory,send})).sub,'test.user');assert.equal(await finishChallenge(challenge.id,code,{store,directory,send}),null);
 const previousMessages=messages.length;await startChallenge('unknown','192.0.2.2',{directory:async()=>null,store,send});assert.equal(messages.length,previousMessages);
 assert.equal((await startChallenge('limited','192.0.2.3',{store:async()=>[11,1,'OK'],directory,send})).status,429);
 console.log(`Upgrade verification passed: ${cases} reference payroll cases, access, hours, snapshots, version selection, session revocation and mocked OTP transport.`);

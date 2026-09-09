@@ -14,7 +14,7 @@
     "scopes": {
       "bot": [
         "users:read",
-        "users:read.email",
+        "users.profile:read",
         "chat:write"
       ]
     }

@@ -48,7 +48,11 @@ export async function readSessionFromCookie(cookieHeader) {
 async function sessionVersion(role, method) {
   const keys = {admin:'ADMIN_ACCESS_CODE',operator:'OPERATOR_ACCESS_CODE',supervisor:'SUPERVISOR_ACCESS_CODE',level4:'LEVEL4_ACCESS_CODE',xd:'XD_ACCESS_CODE',video:'VIDEO_ACCESS_CODE',iron:'IRON_ACCESS_CODE'};
   const roleCode = method === 'role-code' ? process.env[keys[role]] || '' : '';
-  return sign(`${process.env.AUTH_SESSION_VERSION || '1'}:${role}:${method}:${roleCode}`);
+  const identityContext = method === 'ldap-slack' ? JSON.stringify([
+    process.env.CORPORATE_AUTH_SOURCE || 'slack-profile', process.env.SLACK_IDENTITY_MODE || 'profile',
+    process.env.SLACK_TEAM_ID || '', process.env.SLACK_LDAP_FIELD_ID || ''
+  ]) : '';
+  return sign(`${process.env.AUTH_SESSION_VERSION || '1'}:${role}:${method}:${roleCode}${identityContext}`);
 }
 
 export function jsonResponse(res, status, body, headers = {}) {

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev-server.mjs",
-    "verify": "node scripts/verify.mjs && node scripts/verify-security.mjs && node scripts/verify-upgrade.mjs"
+    "verify": "node scripts/verify.mjs && node scripts/verify-security.mjs && node scripts/verify-upgrade.mjs && node scripts/verify-slack-profile.mjs"
   },
   "dependencies": {
     "ldapts": "^9.0.0"
