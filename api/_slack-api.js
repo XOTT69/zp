@@ -9,6 +9,9 @@ export async function slack(method, body = {}) {
   });
   const result = await response.json();
   if (response.ok && method === 'users.lookupByEmail' && result.error === 'users_not_found') return {user:null};
-  if (!response.ok || !result.ok) throw new Error('Slack request failed');
+  if (!response.ok || !result.ok) {
+    const code = /^[a-z_]{1,80}$/.test(result.error || '') ? result.error : `http_${response.status}`;
+    throw new Error(`Slack request failed: ${code}`);
+  }
   return result;
 }

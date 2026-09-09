@@ -56,7 +56,7 @@ export async function syncProfileIndex({send=slack,store=redis,pause=ms=>new Pro
     if (next !== undefined && typeof next !== 'string') throw new Error('Invalid Slack cursor');
     cursor = (next || '').trim();
     if (cursor && cursors.has(cursor)) throw new Error('Repeated Slack cursor');
-    if (cursor) { cursors.add(cursor); await pause(1500); }
+    if (cursor) { cursors.add(cursor); await pause(3100); }
   } while (cursor);
   const index = {version:1,teamId:process.env.SLACK_TEAM_ID,fieldId:process.env.SLACK_LDAP_FIELD_ID,createdAt:now(),entries};
   await store([['SET',indexKey(),JSON.stringify(index),'EX',INDEX_TTL]]);
