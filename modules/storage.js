@@ -1,3 +1,5 @@
+import { RULE_SOURCE_POLICY, defaultRulesSource } from './rule-sources.js';
+
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const THEME_STORAGE_KEY = "zp-theme";
 let storageIdentity = '';
@@ -25,7 +27,7 @@ export function loadCalculatorInputs(type, defaults, clampZone) {
 }
 
 export function saveCalculatorInputs(type, inputs) {
-  safeSet(inputStorageKey(type), JSON.stringify(inputs));
+  safeSet(inputStorageKey(type), JSON.stringify({...inputs, ruleSourcePolicy: RULE_SOURCE_POLICY}));
 }
 
 export function loadScenarios(type) {
@@ -95,6 +97,10 @@ function historyStorageKey(type) {
 }
 
 function migrateSavedInputs(type, saved, defaults) {
+  // Migrate only the working form. History and saved scenarios retain their snapshots.
+  if (saved.ruleSourcePolicy !== RULE_SOURCE_POLICY || type === 'video') {
+    saved.rulesSource = defaultRulesSource(type);
+  }
   if (type === "supervisor" && Number(saved.firstHalfHours) === 82.5) {
     saved.firstHalfHours = defaults.firstHalfHours;
   }
@@ -105,7 +111,7 @@ function migrateSavedInputs(type, saved, defaults) {
       saved.level = defaults.level;
     }
   }
-  if (type === "iron") {
+  if (type === "iron" && saved.rulesSource === 'our') {
     saved.testsHigh = false;
     if (Number(saved.firstHalfHours) === 82.5) saved.firstHalfHours = defaults.firstHalfHours;
     if (Number(saved.secondHalfHours) === 82.5) saved.secondHalfHours = defaults.secondHalfHours;

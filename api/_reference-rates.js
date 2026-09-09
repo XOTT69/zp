@@ -1,6 +1,7 @@
 // Independently transcribed from the visible calculator on 2026-09-05.
 // Source: https://salary.diakirov.com/, displayed version 2.4.3, September 2026.
-// These are reference observations, not an employer-approved payroll policy.
+// The project owner selected these observations as the primary rate source.
+// No independent audit against employer payout tables has been performed.
 export function makeReferenceCalculators(existing) {
   const scheduleMonthHours = existing.supervisor.scheduleMonthHours;
   const common = (name, salary, ratings, tenureBase, options = {}) => ({

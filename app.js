@@ -1,6 +1,7 @@
-import { mountRateEditor } from './modules/admin-rate-editor.js?v=66';
-import { parseHours, validatePayrollInputs } from "./modules/input-validation.js?v=66";
-import { createCalculationRecord, resolveRateVersion } from "./modules/calculation-records.js?v=66";
+import { defaultRulesSource, withColleagueRules } from './modules/rule-sources.js?v=67';
+import { mountRateEditor } from './modules/admin-rate-editor.js?v=67';
+import { parseHours, validatePayrollInputs } from "./modules/input-validation.js?v=67";
+import { createCalculationRecord, resolveRateVersion } from "./modules/calculation-records.js?v=67";
 import {
   CALCULATORS,
   LEVELS,
@@ -10,18 +11,18 @@ import {
   formatCurrency,
   getDefaultInputs,
   roundMoney
-} from "./calculator.js?v=66";
-import { endSession, fetchSession, loginWithCode } from "./modules/auth-client.js?v=66";
+} from "./calculator.js?v=67";
+import { endSession, fetchSession, loginWithCode } from "./modules/auth-client.js?v=67";
 import {
   adminPaymentRulesHtml,
   adminRecentHtml,
   adminRolesHtml,
   adminStatsHtml,
   settingsHistoryHtml
-} from "./modules/admin-ui.js?v=66";
-import { clampRatingZone as clampZone, ratingButtonsHtml } from "./modules/calculator-ui.js?v=66";
-import { buildTextReport as createTextReport, reportHtml } from "./modules/reports.js?v=66";
-import { escapeHtml } from "./modules/safe-html.js?v=66";
+} from "./modules/admin-ui.js?v=67";
+import { clampRatingZone as clampZone, ratingButtonsHtml } from "./modules/calculator-ui.js?v=67";
+import { buildTextReport as createTextReport, reportHtml } from "./modules/reports.js?v=67";
+import { escapeHtml } from "./modules/safe-html.js?v=67";
 import {
   MAX_SCENARIOS,
   setStorageIdentity,
@@ -35,7 +36,7 @@ import {
   savePreferredRole,
   saveScenarios,
   saveTheme
-} from "./modules/storage.js?v=66";
+} from "./modules/storage.js?v=67";
 
 const form = document.querySelector("#calculatorForm");
 const accessView = document.querySelector("#accessView");
@@ -126,7 +127,13 @@ async function init() {
   accessRole.addEventListener("change", syncPasswordManagerUsername);
   form.addEventListener("input", update);
   window.addEventListener("storage-failed", () => showStatus("Браузер не зміг зберегти дані. Звільніть місце або скопіюйте звіт."));
-  document.querySelector("#recalculateRecord").addEventListener("click", () => { savedRecord = null; form.inert = false; document.querySelector("#savedRecordNotice").hidden = true; update(); });
+  document.querySelector("#recalculateRecord").addEventListener("click", () => {
+    savedRecord = null;
+    form.inert = false;
+    form.elements.rulesSource.value = defaultRulesSource(calculatorType);
+    document.querySelector("#savedRecordNotice").hidden = true;
+    update();
+  });
   initCorporateLogin();
   form.addEventListener("change", handleFormChange);
   ratingZoneGroup.addEventListener("click", handleRatingClick);
@@ -189,6 +196,7 @@ function renderRoute() {
   }
 
   const isAdminRoute = window.location.pathname === "/admin";
+  if (!isAdminRoute && lastPayrollPayload) configurePayrollData(withColleagueRules(lastPayrollPayload));
   if (isAdminRoute && !accessSession.isAdmin) {
     navigateTo(`/${firstAllowedCalculator()}`);
     return;
@@ -471,17 +479,23 @@ function update() {
   if (year !== 2026 || (!selectedVersion && source === 'our') || configUnavailable) {
     invalidateResult(configUnavailable ? 'Не вдалося завантажити актуальні правила. Оновіть сторінку.' : 'Для цього періоду немає підтверджених правил і норм годин.'); return;
   }
+  if (source === 'colleague') selectedVersion = {version:{label:'Основні ставки колеги · звірка 05.09.2026',updatedAt:'2026-09-05',source:'colleague'}};
   let payload = source === 'colleague'
-    ? {...lastPayrollPayload, config:{...lastPayrollPayload.config,calculators:{...lastPayrollPayload.config.calculators,...basePayrollPayload.config.referenceCalculators}}}
+    ? withColleagueRules(lastPayrollPayload)
     : applyAdminSettings(basePayrollPayload,selectedVersion);
+  // Video keeps its own period rules while comparisons use the primary rates.
+  if (calculatorType === 'video') payload = withColleagueRules(payload);
   // Payment calibrations are a separate, year-specific dataset.
   if (source === 'our') for (const [key,cfg] of Object.entries(payload.config.calculators)) {
     cfg.paymentMonthlyRules = lastPayrollPayload.config.calculators[key]?.paymentMonthlyRules;
   }
   activeCalculationPayload = payload;
   configurePayrollData(payload);
+  form.elements.rulesSource.closest('label').hidden = calculatorType === 'video';
   renderModeLabels();
   renderModeFields();
+  selectedRatingZone = clampRatingZone(selectedRatingZone);
+  renderRatingButtons(selectedRatingZone);
   document.querySelector('#stageField').hidden = !CALCULATORS[calculatorType].stages;
   form.elements.salary.value = getDefaultInputs(calculatorType).salary;
   const inputs = readInputs();
@@ -521,6 +535,7 @@ function handleFormChange(event) {
 }
 
 function applyMonthTemplate(type, month) {
+  if (form.elements.rulesSource.value === 'colleague') return;
   const template = activeSettings.templates?.[type]?.[month];
   if (!template) return;
   const merged = {
@@ -606,7 +621,7 @@ function renderEffectiveHourlyPay(result) {
 }
 
 function renderRulesVersion() {
-  if (form.elements.rulesSource.value === "colleague" || CALCULATORS[calculatorType]?.reference) { rulesVersion.textContent="Джерело: калькулятор колеги · звірено 05.09.2026. Не затверджено роботодавцем."; return; }
+  if (CALCULATORS[calculatorType]?.reference) { rulesVersion.textContent="Основні ставки: калькулятор колеги · звірено 05.09.2026."; return; }
   const version = savedRecord?.version || selectedVersion?.version || activeSettings.version;
   rulesVersion.textContent = version?.label
     ? `${version.label}${version.updatedAt ? ` · оновлено ${version.updatedAt}` : ""}`
@@ -626,7 +641,9 @@ function buildValidationMessages(result) {
   const version = savedRecord?.version || selectedVersion?.version || activeSettings.version;
 
   if (CALCULATORS[calculatorType]?.reference) {
-    messages.push({tone:'info',text:'Ставки з калькулятора колеги, звірка 05.09.2026. Потребують підтвердження роботодавцем.'});
+    messages.push({tone:'info',text:'Розрахунок за ставками калькулятора колеги, звіреними 05.09.2026.'});
+  } else if (calculatorType !== 'video') {
+    messages.push({tone:'warning',text:'Вибрано попередні правила проєкту. Для актуального розрахунку виберіть основні ставки колеги.'});
   } else if (version?.label) {
     const updated = version.updatedAt ? ` · оновлено ${version.updatedAt}` : "";
     messages.push({ tone: "success", text: `${version.label}${updated}` });
@@ -1089,6 +1106,7 @@ function renderScenarios() {
 
 function reset() {
   if (!calculatorType) return;
+  configurePayrollData(withColleagueRules(lastPayrollPayload));
   const defaults = getRuntimeDefaults(calculatorType);
   selectedRatingZone = defaults.ratingZone;
   fillForm(defaults);
@@ -1191,7 +1209,7 @@ function handleHistoryClick(event) {
 function getRuntimeDefaults(type) {
   return {
     ...getDefaultInputs(type),
-    year: new Date().getFullYear(), rulesSource: "our", stage: "after3",
+    year: new Date().getFullYear(), rulesSource: defaultRulesSource(type), stage: "after3",
     month: MONTHS[new Date().getMonth()]?.name ?? getDefaultInputs(type).month
   };
 }
