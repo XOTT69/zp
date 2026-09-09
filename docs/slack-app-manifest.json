@@ -1,6 +1,27 @@
 {
-  "display_information": {"name":"Калькулятор ЗП","description":"Одноразові коди входу до калькулятора зарплати","background_color":"#173c39"},
-  "features":{"bot_user":{"display_name":"Калькулятор ЗП","always_online":false}},
-  "oauth_config":{"scopes":{"bot":["users:read.email","chat:write"]}},
-  "settings":{"org_deploy_enabled":false,"socket_mode_enabled":false,"token_rotation_enabled":false}
+  "display_information": {
+    "name": "Калькулятор ЗП",
+    "description": "Одноразові коди входу до калькулятора зарплати",
+    "background_color": "#173c39"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "zp-calculator",
+      "always_online": false
+    }
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "users:read",
+        "users:read.email",
+        "chat:write"
+      ]
+    }
+  },
+  "settings": {
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
 }

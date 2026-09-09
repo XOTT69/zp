@@ -6,7 +6,7 @@
 
 ## Що підготувати адміністратору
 
-1. Створити Slack App із `docs/slack-app-manifest.json`, встановити у робочий workspace. Записати Bot User OAuth Token у серверну змінну `SLACK_BOT_TOKEN` у Vercel. Дозволи: `users:read.email` і `chat:write`; читання повідомлень не потрібне.
+1. Створити Slack App із `docs/slack-app-manifest.json`, встановити у робочий workspace. Записати Bot User OAuth Token у серверну змінну `SLACK_BOT_TOKEN` у Vercel. Дозволи: `users:read`, `users:read.email` і `chat:write`; читання повідомлень не потрібне. Slack вимагає `users:read` разом із доступом до email. У manifest назва бота `zp-calculator` використовує дозволені латинські символи; назва застосунку залишається «Калькулятор ЗП».
 2. Підключити Upstash Redis, записати REST URL і токен у змінні з `.env.example`.
 3. Надати сервісний LDAP-акаунт лише для читання: URL `ldaps://…`, bind DN, пароль і base DN. LDAP `mail` має збігатися з email у Slack. `LDAP_EMAIL_DOMAINS` обмежує дозволені корпоративні домени. Типовий фільтр налаштовано на Microsoft AD й активні акаунти. Для іншого каталогу IT має задати відповідний фільтр активності з обов’язковим `{{login}}`.
 4. Перевірити доступність LDAP із середовища хостингу. Якщо він доступний лише через VPN, потрібен HTTPS-міст у корпоративній мережі або розміщення Node-сервера всередині неї. Доступ локального ноутбука через VPN не означає, що Vercel може підключитися.
