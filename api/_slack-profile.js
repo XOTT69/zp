@@ -24,8 +24,11 @@ async function checkField(send) {
   if (auth.team_id !== process.env.SLACK_TEAM_ID) throw new Error('Unexpected Slack workspace');
   const result = await send('team.profile.get',{});
   const field = result.profile?.fields?.find(item=>item.id === process.env.SLACK_LDAP_FIELD_ID);
-  // A self-editable login field could let a member claim another employee's identity.
-  if (field?.options?.is_protected !== true) throw new Error('LDAP profile field must be protected by the workspace administrator');
+  if (!field) throw new Error('LDAP profile field is missing');
+  // The owner may attest that IT controls editing outside this API flag. Scope
+  // that trust to an exact workspace/field pair; never infer it from a login.
+  const attested = process.env.SLACK_LDAP_FIELD_ATTESTATION === `${process.env.SLACK_TEAM_ID}:${field.id}`;
+  if (field.options?.is_protected !== true && !attested) throw new Error('LDAP profile field needs administrator protection or owner attestation');
 }
 
 // Run outside the login request: a large workspace needs paginated profile reads.

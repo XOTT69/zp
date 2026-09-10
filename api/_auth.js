@@ -50,7 +50,7 @@ async function sessionVersion(role, method) {
   const roleCode = method === 'role-code' ? process.env[keys[role]] || '' : '';
   const identityContext = method === 'ldap-slack' ? JSON.stringify([
     process.env.CORPORATE_AUTH_SOURCE || 'slack-profile', process.env.SLACK_IDENTITY_MODE || 'profile',
-    process.env.SLACK_TEAM_ID || '', process.env.SLACK_LDAP_FIELD_ID || ''
+    process.env.SLACK_TEAM_ID || '', process.env.SLACK_LDAP_FIELD_ID || '', process.env.SLACK_LDAP_FIELD_ATTESTATION || ''
   ]) : '';
   return sign(`${process.env.AUTH_SESSION_VERSION || '1'}:${role}:${method}:${roleCode}${identityContext}`);
 }

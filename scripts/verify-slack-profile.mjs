@@ -6,6 +6,7 @@ import {startChallenge,finishChallenge,slackLoginEnabled} from '../api/_slack-au
 import {createSessionCookie,readSessionFromCookie} from '../api/_auth.js';
 
 Object.assign(process.env,{CORPORATE_AUTH_SOURCE:'slack-profile',SLACK_IDENTITY_MODE:'profile',SLACK_TEAM_ID:'TTEST',SLACK_LDAP_FIELD_ID:'XfLDAP',AUTH_SECRET:'test-profile-secret',LDAP_EMAIL_DOMAINS:'unused.invalid'});
+delete process.env.SLACK_LDAP_FIELD_ATTESTATION;
 const manifest = JSON.parse(await readFile(new URL('../docs/slack-app-manifest.json',import.meta.url)));
 assert.match(manifest.features.bot_user.display_name,/^[a-z0-9._-]{1,80}$/);
 assert.deepEqual(new Set(manifest.oauth_config.scopes.bot),new Set(['users:read','users.profile:read','chat:write']));
@@ -76,6 +77,16 @@ logins.UALICE = 'test.user';
 protectedField = false;
 await assert.rejects(findSlackProfileUser('test.user',deps));
 await assert.rejects(syncProfileIndex(deps));
+process.env.SLACK_LDAP_FIELD_ATTESTATION = 'TOTHER:XfLDAP';
+await assert.rejects(findSlackProfileUser('test.user',deps));
+process.env.SLACK_LDAP_FIELD_ATTESTATION = 'TTEST:XfOTHER';
+await assert.rejects(findSlackProfileUser('test.user',deps));
+process.env.SLACK_LDAP_FIELD_ATTESTATION = 'TTEST:XfLDAP';
+assert.equal((await findSlackProfileUser('test.user',deps)).id,'UALICE');
+assert.deepEqual(await syncProfileIndex(deps),result);
+await assert.rejects(findSlackProfileUser('test.user',{...deps,send:async(method,body)=>
+  method === 'team.profile.get' ? {profile:{fields:[]}} : send(method,body)}));
+delete process.env.SLACK_LDAP_FIELD_ATTESTATION;
 protectedField = true; wrongTeam = true;
 await assert.rejects(findSlackProfileUser('test.user',deps));
 wrongTeam = false; failProfiles = true;
@@ -101,6 +112,9 @@ for (const key of ['LDAP_URL','LDAP_BIND_DN','LDAP_BIND_PASSWORD','LDAP_BASE_DN'
 assert.equal(slackLoginEnabled(),true);
 const cookie = await createSessionCookie('operator',{authMethod:'ldap-slack',sub:'test.user'});
 assert.ok(await readSessionFromCookie(cookie));
+process.env.SLACK_LDAP_FIELD_ATTESTATION = 'TTEST:XfLDAP';
+assert.equal(await readSessionFromCookie(cookie),null);
+delete process.env.SLACK_LDAP_FIELD_ATTESTATION;
 process.env.SLACK_TEAM_ID = 'TOTHER';
 assert.equal(await readSessionFromCookie(cookie),null);
 process.env.SLACK_TEAM_ID = 'TTEST';
