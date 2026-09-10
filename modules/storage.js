@@ -1,8 +1,13 @@
+import { RULE_SOURCE_POLICY, defaultRulesSource } from './rule-sources.js';
+
 const STORAGE_KEY_PREFIX = "zp-2-2-calculator-inputs";
 const THEME_STORAGE_KEY = "zp-theme";
+let storageIdentity = '';
+export function setStorageIdentity(subject) { storageIdentity = subject && !subject.startsWith('role:') ? subject : ''; }
+function storagePrefix() { return storageIdentity ? `${STORAGE_KEY_PREFIX}-user-${encodeURIComponent(storageIdentity)}` : STORAGE_KEY_PREFIX; }
 
 export const MAX_SCENARIOS = 6;
-export const MAX_HISTORY_ITEMS = 8;
+export const MAX_HISTORY_ITEMS = 30;
 
 export function loadCalculatorInputs(type, defaults, clampZone) {
   try {
@@ -22,12 +27,22 @@ export function loadCalculatorInputs(type, defaults, clampZone) {
 }
 
 export function saveCalculatorInputs(type, inputs) {
-  localStorage.setItem(inputStorageKey(type), JSON.stringify(inputs));
+  safeSet(inputStorageKey(type), JSON.stringify({...inputs, ruleSourcePolicy: RULE_SOURCE_POLICY}));
 }
 
 export function loadScenarios(type) {
   try {
-    const scenarios = JSON.parse(localStorage.getItem(scenarioStorageKey(type))) ?? [];
+    let raw = localStorage.getItem(scenarioStorageKey(type));
+    if (raw === null) {
+      const legacy = (storageIdentity ? [] : ['service','supervisor','level4','xd','video','iron']).flatMap(key=>{
+        try { const items=JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}-scenarios-${key}`)) || [];
+          return Array.isArray(items)?items.map(item=>({...item,type:key,id:`legacy:${key}:${item.id}`})):[];
+        } catch { return []; }
+      });
+      raw=JSON.stringify(legacy.slice(-MAX_SCENARIOS));
+      safeSet(scenarioStorageKey(type),raw);
+    }
+    const scenarios = JSON.parse(raw) ?? [];
     return Array.isArray(scenarios) ? scenarios.slice(-MAX_SCENARIOS) : [];
   } catch {
     return [];
@@ -35,7 +50,7 @@ export function loadScenarios(type) {
 }
 
 export function saveScenarios(type, scenarios) {
-  localStorage.setItem(scenarioStorageKey(type), JSON.stringify(scenarios.slice(-MAX_SCENARIOS)));
+  safeSet(scenarioStorageKey(type), JSON.stringify(scenarios.slice(-MAX_SCENARIOS)));
 }
 
 export function loadCalculationHistory(type) {
@@ -48,40 +63,42 @@ export function loadCalculationHistory(type) {
 }
 
 export function saveCalculationHistory(type, history) {
-  localStorage.setItem(historyStorageKey(type), JSON.stringify(history.slice(-MAX_HISTORY_ITEMS)));
+  safeSet(historyStorageKey(type), JSON.stringify(history.slice(-MAX_HISTORY_ITEMS)));
 }
 
 export function loadPreferredRole() {
-  return localStorage.getItem("zp-preferred-role") || "";
+  try { return localStorage.getItem("zp-preferred-role") || ""; } catch { return ""; }
 }
 
 export function savePreferredRole(role) {
-  if (role) localStorage.setItem("zp-preferred-role", role);
-  else localStorage.removeItem("zp-preferred-role");
+  safeSet("zp-preferred-role",role || "");
 }
 
 export function loadSavedTheme() {
-  const theme = localStorage.getItem(THEME_STORAGE_KEY);
+  let theme;
+  try { theme = localStorage.getItem(THEME_STORAGE_KEY); } catch { return null; }
   return theme === "dark" || theme === "light" ? theme : null;
 }
 
 export function saveTheme(theme) {
-  localStorage.setItem(THEME_STORAGE_KEY, theme);
+  safeSet(THEME_STORAGE_KEY, theme);
 }
 
 function inputStorageKey(type) {
-  return `${STORAGE_KEY_PREFIX}-${type}`;
+  return `${storagePrefix()}-${type}`;
 }
 
 function scenarioStorageKey(type) {
-  return `${STORAGE_KEY_PREFIX}-scenarios-${type}`;
+  return `${storagePrefix()}-scenarios-all`;
 }
 
 function historyStorageKey(type) {
-  return `${STORAGE_KEY_PREFIX}-history-${type}`;
+  return `${storagePrefix()}-history-${type}`;
 }
 
 function migrateSavedInputs(type, saved, defaults) {
+  // Migrate only the working form. History and saved scenarios retain their snapshots.
+  saved.rulesSource = defaultRulesSource(type);
   if (type === "supervisor" && Number(saved.firstHalfHours) === 82.5) {
     saved.firstHalfHours = defaults.firstHalfHours;
   }
@@ -92,10 +109,14 @@ function migrateSavedInputs(type, saved, defaults) {
       saved.level = defaults.level;
     }
   }
-  if (type === "iron") {
+  if (type === "iron" && saved.rulesSource === 'our') {
     saved.testsHigh = false;
     if (Number(saved.firstHalfHours) === 82.5) saved.firstHalfHours = defaults.firstHalfHours;
     if (Number(saved.secondHalfHours) === 82.5) saved.secondHalfHours = defaults.secondHalfHours;
   }
   if (saved.secondHalfHours === undefined) saved.secondHalfHours = defaults.secondHalfHours;
+}
+
+function safeSet(key, value) {
+  try { localStorage.setItem(key, value); } catch { window.dispatchEvent(new CustomEvent("storage-failed")); }
 }

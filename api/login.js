@@ -10,6 +10,10 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (process.env.ROLE_CODE_LOGIN_ENABLED === 'false') {
+      jsonResponse(res, 403, { error: 'Використайте корпоративний вхід.' });
+      return;
+    }
     const { role, code, password } = await readJsonBody(req);
     const accessCode = code ?? password;
     const rateLimit = await consumeLoginAttempt(req, role);

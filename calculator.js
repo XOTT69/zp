@@ -1,3 +1,4 @@
+import { parseHours } from "./modules/input-validation.js";
 export let LEVELS = [];
 export let MONTHS = [];
 export let CALCULATORS = {};
@@ -33,7 +34,9 @@ export function configurePayrollData(payload) {
         scheduleOptions: config.scheduleOptions ?? null,
         ratingZones: getRatingZones(config),
         maxRatingZone: getMaxRatingZone(config),
-        doublePayMode: config.doublePayMode ?? "salaryPlusRating"
+        doublePayMode: config.doublePayMode ?? "salaryPlusRating",
+        reference: Boolean(config.reference), zoneLabels:config.zoneLabels, zoneTones:config.zoneTones,
+        hasTests:config.hasTests !== false, hasNight:config.hasNight !== false, hasDouble:config.hasDouble !== false, stages:config.stages, functionalBonusByLevel:config.functionalBonusByLevel
       }
     ])
   );
@@ -86,10 +89,16 @@ function applyRuntimeConfigOverrides(config) {
  * @returns {object} Payroll totals, taxes, breakdown rows and payment schedule.
  */
 export function calculatePayroll(input, calculatorType = "service") {
-  const config = PAYROLL_CONFIG.calculators[calculatorType] ?? PAYROLL_CONFIG.calculators.service;
-  return config.taxMode === "gross"
-    ? calculateSupervisorPayroll(input, calculatorType)
-    : calculateServicePayroll(input, calculatorType);
+  const original = PAYROLL_CONFIG.calculators[calculatorType];
+  if (!original) throw new Error("Невідомий напрямок розрахунку.");
+  const stage = original.stages?.[input.stage || 'after3'] || {};
+  const config = {...original, ...stage};
+  if (stage.noQualification) { config.levelBonusByLevelAndZone = {level1:{default:0},level2:{default:0},level3:{default:0}}; config.functionalBonusByLevel = {}; }
+  if (stage.noTenure) config.tenureBase = 0;
+  PAYROLL_CONFIG.calculators[calculatorType] = config;
+  try {
+    return config.taxMode === "gross" ? calculateSupervisorPayroll(input, calculatorType) : calculateServicePayroll(input, calculatorType);
+  } finally { PAYROLL_CONFIG.calculators[calculatorType] = original; }
 }
 
 /**
@@ -212,6 +221,7 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
   const normHours = getMonthHours(values.month, calculatorType, values.workSchedule);
   const ratingBonus = config.ratingBonusByZone[values.ratingZone] ?? 0;
   const levelBonus = getLevelBonus(values.level, values.ratingZone, calculatorType);
+  const functionalBonus = config.functionalBonusByLevel?.[values.level] || 0;
   const testHours = values.testsHigh ? 1 : 0;
   const effectiveHours = values.actualHours + testHours;
 
@@ -222,12 +232,12 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
   const wowBonus = config.bonusInputMode === "amountTaxable"
     ? 0
     : Math.min(PAYROLL_CONFIG.maxWowCases, Math.max(0, values.wowCases)) * (config.wowCaseRate ?? 0);
-  const taxiCompensation = (values.taxiAmount / PAYROLL_CONFIG.taxiDivisor) * 100;
+  const taxiCompensation = config.taxiInputMode === "net" ? values.taxiAmount / (1-taxRate) : (values.taxiAmount / PAYROLL_CONFIG.taxiDivisor) * 100;
 
   const finesGross = config.finesMode === "net" ? 0 : values.fines;
   const finesNet = config.finesMode === "net" ? values.fines : 0;
   const baseGross =
-    ((values.salary + levelBonus + ratingBonus) / normHours) * effectiveHours +
+    ((values.salary + levelBonus + functionalBonus + ratingBonus) / normHours) * effectiveHours +
     nightPay +
     holidayPay +
     doublePay +
@@ -281,6 +291,7 @@ export function calculateSupervisorPayroll(input, calculatorType = "supervisor")
 
   return {
     calculatorType,
+    functionalBonus,
     input: values,
     normHours,
     effectiveHours,
@@ -423,23 +434,26 @@ function normalizeInputs(input, calculatorType) {
   const tenureYears = Math.min(maxTenureYears, Math.max(0, Math.floor(toNumber(input.tenureYears))));
 
   return {
+    year: Number(input.year || 2026),
+    rulesSource: input.rulesSource || "our",
+    stage: input.stage || "after3",
     month: input.month || defaults.month,
     workSchedule: input.workSchedule || defaults.workSchedule || config.defaultWorkSchedule || "2/2",
-    actualHours: nonNegative(input.actualHours),
-    testsHigh: Boolean(input.testsHigh),
+    actualHours: parseHours(input.actualHours).value ?? 0,
+    testsHigh: config.hasTests !== false && Boolean(input.testsHigh),
     ratingZone,
     level: input.level || defaults.level,
     salary: nonNegative(input.salary),
-    nightHours: nonNegative(input.nightHours),
-    holidayHours: nonNegative(input.holidayHours),
-    doubleHours: nonNegative(input.doubleHours),
+    nightHours: config.hasNight === false ? 0 : (parseHours(input.nightHours).value ?? 0),
+    holidayHours: parseHours(input.holidayHours).value ?? 0,
+    doubleHours: config.hasDouble === false ? 0 : (parseHours(input.doubleHours).value ?? 0),
     wowCases: normalizeBonusInput(input.wowCases, config),
     fines: nonNegative(input.fines),
     taxiAmount: nonNegative(input.taxiAmount),
     tenureYears,
-    tenureHours: Math.max(0, toNumber(valueOrDefault(input.tenureHours, input.actualHours))),
-    firstHalfHours: Math.max(0, toNumber(valueOrDefault(input.firstHalfHours, defaults.firstHalfHours))),
-    secondHalfHours: Math.max(0, toNumber(valueOrDefault(input.secondHalfHours, defaults.secondHalfHours))),
+    tenureHours: parseHours(valueOrDefault(input.tenureHours, input.actualHours)).value ?? 0,
+    firstHalfHours: parseHours(valueOrDefault(input.firstHalfHours, defaults.firstHalfHours)).value ?? 0,
+    secondHalfHours: parseHours(valueOrDefault(input.secondHalfHours, defaults.secondHalfHours)).value ?? 0,
     ratingFirstPart,
     annualIncome: Math.max(0, toNumber(input.annualIncome)),
     absenceCalendarDays: Math.max(1, Math.floor(toNumber(valueOrDefault(input.absenceCalendarDays, defaults.absenceCalendarDays)))),

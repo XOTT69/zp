@@ -38,7 +38,7 @@ function adminRoles() {
         envKey: config.envKey,
         configured: Boolean(process.env[config.envKey]),
         isAdmin: Boolean(config.isAdmin),
-        allowedCalculators: [...config.allowedCalculators]
+        allowedCalculators: getSessionForRole(key).allowedCalculators
       }
     ])
   );
