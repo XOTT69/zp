@@ -8,14 +8,23 @@
     "bot_user": {
       "display_name": "zp-calculator",
       "always_online": false
-    }
+    },
+    "slash_commands": [
+      {
+        "command": "/zp",
+        "url": "https://zp-kit.vercel.app/api/slack-command",
+        "description": "Підключити свій Slack до калькулятора ЗП",
+        "should_escape": false
+      }
+    ]
   },
   "oauth_config": {
     "scopes": {
       "bot": [
         "users:read",
         "users.profile:read",
-        "chat:write"
+        "chat:write",
+        "commands"
       ]
     }
   },

@@ -14,6 +14,12 @@ http.createServer(async (req,res) => {
       if (!/^\/api\/(?:[a-z-]+\/)*[a-z-]+$/.test(url.pathname)) { res.writeHead(404).end(); return; }
       const file = resolve(root, `.${url.pathname}.js`);
       const {default:handler} = await import(file);
+      if(typeof handler?.fetch==='function') {
+        const body=[];for await(const chunk of req) body.push(chunk);
+        const request=new Request(url,{method:req.method,headers:req.headers,...(body.length?{body:Buffer.concat(body)}:{})});
+        const response=await handler.fetch(request);
+        res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));return;
+      }
       await handler(req,res); return;
     }
     if (!extname(url.pathname)) {

@@ -31,9 +31,9 @@ async function checkField(send) {
   if (field.options?.is_protected !== true && !attested) throw new Error('LDAP profile field needs administrator protection or owner attestation');
 }
 
-// No directory scan. An unbound login needs a Member ID supplied by its owner.
-// The ID only selects a candidate; current workspace, account, LDAP and OTP still
-// prove identity. A binding is saved only after successful OTP verification.
+// No directory scan. Website requests use only an existing server binding.
+// Internal callers may select a candidate, but current workspace, account, LDAP
+// and OTP still prove identity. Candidate IDs are never accepted from the form.
 export async function findSlackProfileUser(login,{send=slack,store=redis,slackUserId}={}) {
   login = normalizeProfileLogin(login);
   if (!login) return null;
@@ -42,8 +42,8 @@ export async function findSlackProfileUser(login,{send=slack,store=redis,slackUs
   if (boundId && slackUserId && boundId !== slackUserId) return null;
   const id = boundId || slackUserId;
   if (!id) {
-    const error = new Error('Slack Member ID is required for the first login');
-    error.code = 'SLACK_ID_REQUIRED';
+    const error = new Error('Slack account connection is required');
+    error.code = 'SLACK_CONNECTION_REQUIRED';
     throw error;
   }
   if (!/^[UW][A-Z0-9]{2,79}$/.test(id)) return null;
@@ -65,4 +65,14 @@ export async function rememberSlackProfileUser(login,id,{store=redis}={}) {
   if (!login || !/^[UW][A-Z0-9]{2,79}$/.test(id || '')) return false;
   const [saved] = await store([['EVAL',REMEMBER_PROFILE_SCRIPT,1,bindingKey(login),id,BINDING_TTL]]);
   return saved === 1;
+}
+
+// Only call for a sender authenticated by a verified Slack request signature.
+export async function connectSlackProfileUser(id,{send=slack,store=redis}={}) {
+  await checkField(send);
+  const {user} = await send('users.info',{user:id});
+  if (!eligible(user) || user.id !== id) return false;
+  const {profile} = await send('users.profile.get',{user:id});
+  const login = normalizeProfileLogin(profile?.fields?.[process.env.SLACK_LDAP_FIELD_ID]?.value);
+  return Boolean(login && await rememberSlackProfileUser(login,id,{store}));
 }

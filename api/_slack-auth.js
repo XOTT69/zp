@@ -43,7 +43,7 @@ export async function startChallenge(login,ip,{directory=findDirectoryAccount,st
   let identity;
   try { identity = await findLoginIdentity(login,{directory,send,store,slackUserId}); }
   catch (error) {
-    if (error.code === 'SLACK_ID_REQUIRED') await store([['DEL',`zp:otp:cooldown:${key}`]]);
+    if (error.code === 'SLACK_CONNECTION_REQUIRED') await store([['DEL',`zp:otp:cooldown:${key}`]]);
     throw error;
   }
   // Identical successful shape for an unknown identifier; never disclose directory membership.
