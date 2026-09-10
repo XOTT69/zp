@@ -1,5 +1,5 @@
 import {slack} from '../api/_slack-api.js';
-import {syncProfileIndex} from '../api/_slack-profile.js';
+import {verifyRedisOtp} from './verify-redis-otp.mjs';
 
 // Saved Vercel secrets are write-only outside deployment runtimes. Inspect only
 // non-secret setup metadata in Preview; never print tokens or employee profiles.
@@ -15,9 +15,4 @@ if (process.env.VERCEL_ENV === 'preview' && process.env.SLACK_BOT_TOKEN && !proc
   }
 }
 
-if (process.env.VERCEL_ENV === 'preview' && process.env.SLACK_SYNC_ON_BUILD === 'true') {
-  const result = await syncProfileIndex({progress:({scanned})=>{
-    if (scanned % 100 === 0) console.log(`[Slack sync] Scanned: ${scanned}`);
-  }});
-  console.log('[Slack sync]',JSON.stringify(result));
-}
+if (process.env.VERCEL_ENV === 'preview' && process.env.SLACK_VERIFY_REDIS_ON_BUILD === 'true') await verifyRedisOtp();

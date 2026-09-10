@@ -2,7 +2,7 @@ import {randomBytes,randomInt,createHmac} from 'node:crypto';
 import {redis,hasRedis} from './_redis.js';
 import {findDirectoryAccount} from './_directory.js';
 import {slack} from './_slack-api.js';
-import {findSlackProfileUser,profileIdentityEnabled,profileIdentityConfigured} from './_slack-profile.js';
+import {findSlackProfileUser,rememberSlackProfileUser,profileIdentityEnabled,profileIdentityConfigured} from './_slack-profile.js';
 
 const TTL = 300;
 function authSource() { return process.env.CORPORATE_AUTH_SOURCE || 'slack-profile'; }
@@ -17,30 +17,35 @@ export function slackLoginEnabled() {
 export function challengeDigest(id,code) {
   return createHmac('sha256',process.env.AUTH_SECRET).update(`${id}:${code}`).digest('hex');
 }
-async function findRecipient(account,{send,store}) {
-  if (profileIdentityEnabled()) return findSlackProfileUser(account.login,{send,store});
+async function findRecipient(account,{send,store,slackUserId}) {
+  if (profileIdentityEnabled()) return findSlackProfileUser(account.login,{send,store,slackUserId});
   const {user} = await send('users.lookupByEmail',{email:account.email});
   return user && !user.deleted && !user.is_bot ? user : null;
 }
-async function findLoginIdentity(login,{directory,send,store}) {
+async function findLoginIdentity(login,{directory,send,store,slackUserId}) {
   if (authSource() === 'slack-profile') {
     if (!profileIdentityEnabled()) throw new Error('Slack profile login requires profile identity');
-    const user = await findSlackProfileUser(login,{send,store});
+    const user = await findSlackProfileUser(login,{send,store,slackUserId});
     return user ? {user,account:{login,displayName:String(user.real_name || user.profile?.display_name || login).slice(0,100)}} : null;
   }
   if (authSource() !== 'directory') throw new Error('Unknown corporate authentication source');
   const account = await directory(login);
   if (!account) return null;
-  const user = await findRecipient(account,{send,store});
+  const user = await findRecipient(account,{send,store,slackUserId});
   return user?.id ? {account,user} : null;
 }
-export async function startChallenge(login,ip,{directory=findDirectoryAccount,store=redis,send=slack}={}) {
+export async function startChallenge(login,ip,{directory=findDirectoryAccount,store=redis,send=slack,slackUserId}={}) {
   const id=randomBytes(24).toString('hex');
   const key=challengeDigest('login',login);
   const ipKey=challengeDigest('ip',ip);
   const limits=await store([['INCR',`zp:otp:ip:${ipKey}`],['EXPIRE',`zp:otp:ip:${ipKey}`,900,'NX'],['SET',`zp:otp:cooldown:${key}`,'1','EX',60,'NX']]);
   if(Number(limits[0])>10 || limits[2] !== 'OK') return {status:429,retryAfter:60};
-  const identity = await findLoginIdentity(login,{directory,send,store});
+  let identity;
+  try { identity = await findLoginIdentity(login,{directory,send,store,slackUserId}); }
+  catch (error) {
+    if (error.code === 'SLACK_ID_REQUIRED') await store([['DEL',`zp:otp:cooldown:${key}`]]);
+    throw error;
+  }
   // Identical successful shape for an unknown identifier; never disclose directory membership.
   if(!identity) return {status:200,id,expiresIn:TTL};
   const {account,user} = identity;
@@ -73,8 +78,9 @@ export async function finishChallenge(id,code,{store=redis,directory=findDirecto
   const [latest]=await store([['GET',`zp:otp:latest:${challengeDigest('login',record.login)}`]]);
   if(latest!==id) return null;
   if (record.identityMode !== (process.env.SLACK_IDENTITY_MODE || 'profile') || record.authSource !== authSource()) return null;
-  const identity = await findLoginIdentity(record.login,{directory,send,store});
+  const identity = await findLoginIdentity(record.login,{directory,send,store,slackUserId:record.slackUserId});
   if (!identity || identity.user.id !== record.slackUserId) return null;
+  if (profileIdentityEnabled() && !await rememberSlackProfileUser(record.login,record.slackUserId,{store})) return null;
   const {account} = identity;
   return {role:'operator',sub:account.login,displayName:account.displayName,authMethod:'ldap-slack'};
 }

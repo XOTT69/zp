@@ -1896,14 +1896,16 @@ async function initCorporateLogin() {
     corporate.hidden=!options.ldapSlack; accessForm.hidden=!options.roleCode;
     if(!options.ldapSlack && !options.roleCode) { const notice=document.createElement('p');notice.className='notice warning';notice.textContent='Зверніться до адміністратора для налаштування входу.';corporate.before(notice); }
   } catch { return; }
-  restart.addEventListener('click',()=>{challengeId=null;otpField.hidden=true;restart.hidden=true;corporate.elements.login.readOnly=false;corporate.elements.otp.value='';corporate.querySelector('[type=submit]').textContent='Отримати код у Slack';});
+  restart.addEventListener('click',()=>{challengeId=null;otpField.hidden=true;restart.hidden=true;corporate.elements.login.readOnly=false;corporate.elements.slackUserId.readOnly=false;corporate.elements.otp.value='';corporate.querySelector('[type=submit]').textContent='Отримати код у Slack';});
   corporate.addEventListener('submit',async event=>{
     event.preventDefault(); const button=corporate.querySelector('[type=submit]'); button.disabled=true;
     try {
-      const response=await fetch('/api/corporate-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(challengeId?{action:'verify',challengeId,code:corporate.elements.otp.value}:{action:'request',login:corporate.elements.login.value})});
-      const data=await response.json(); if(!response.ok) throw new Error(data.error || 'Спробуйте ще раз.');
+      const response=await fetch('/api/corporate-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(challengeId?{action:'verify',challengeId,code:corporate.elements.otp.value}:{action:'request',login:corporate.elements.login.value,slackUserId:corporate.elements.slackUserId.value})});
+      const data=await response.json();
+      if(data.needsSlackId) {document.querySelector('#slackIdentityHint').open=true;corporate.elements.slackUserId.focus();}
+      if(!response.ok) throw new Error(data.error || 'Спробуйте ще раз.');
       if(data.authenticated) { corporate.reset(); await hydrateSession(); navigateTo('/'+firstAllowedCalculator()); }
-      else {challengeId=data.challengeId;otpField.hidden=false;restart.hidden=false;corporate.elements.login.readOnly=true;corporate.elements.otp.focus();button.textContent='Увійти';message.textContent=data.message;}
+      else {challengeId=data.challengeId;otpField.hidden=false;restart.hidden=false;corporate.elements.login.readOnly=true;corporate.elements.slackUserId.readOnly=true;corporate.elements.otp.focus();button.textContent='Увійти';message.textContent=data.message;}
     } catch(error) {message.textContent=error.message;} finally {button.disabled=false;}
   });
 }

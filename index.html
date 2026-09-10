@@ -70,6 +70,10 @@
           <p>Увійдіть, щоб рахувати й порівнювати всі напрямки.</p>
           <form id="corporateLogin" class="access-form" hidden>
             <label><span>Робочий логін</span><input name="login" autocomplete="username" required maxlength="80" /></label>
+            <details id="slackIdentityHint"><summary>Перший вхід? Прив’язати Slack</summary>
+              <label><span>Slack Member ID</span><input name="slackUserId" autocomplete="off" maxlength="80" placeholder="U…" /></label>
+              <p class="muted">У своєму профілі Slack: ⋯ → Copy member ID. Після підтвердження коду наступного разу достатньо LDAP.</p>
+            </details>
             <label id="otpField" hidden><span>Одноразовий код зі Slack</span><input name="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" /></label>
             <button class="primary-button" type="submit">Отримати код у Slack</button>
             <button id="restartOtp" type="button" class="ghost-button" hidden>Інший логін / новий код</button>
