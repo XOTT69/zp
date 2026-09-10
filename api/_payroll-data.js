@@ -331,6 +331,7 @@ export const PAYROLL_CONFIG = {
     iron: {
       title: "ЗП IRON",
       shortTitle: "IRON",
+      hasTests: false,
       source: "Копия Розрахувати зарплату (оператор айрон)",
       taxMode: "gross",
       taxRate: 0.23,
