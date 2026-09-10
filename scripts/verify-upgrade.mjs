@@ -92,13 +92,26 @@ localValues.set('zp-2-2-calculator-inputs-user-alice-iron',JSON.stringify({rules
 const migrated = storage.loadCalculatorInputs('iron',ironDefaults,clamp);
 assert.equal(migrated.rulesSource,'colleague');
 assert.equal(migrated.actualHours,123);
-assert.equal(migrated.testsHigh,true);
+assert.equal(migrated.testsHigh,false);
 storage.saveCalculatorInputs('iron',migrated);
 assert.equal(JSON.parse(localValues.get('zp-2-2-calculator-inputs-user-alice-iron')).ruleSourcePolicy,RULE_SOURCE_POLICY);
-assert.equal(storage.loadCalculatorInputs('iron',ironDefaults,clamp).testsHigh,true);
+assert.equal(storage.loadCalculatorInputs('iron',ironDefaults,clamp).testsHigh,false);
 storage.saveCalculatorInputs('iron',{...migrated,rulesSource:'our'});
 assert.equal(storage.loadCalculatorInputs('iron',ironDefaults,clamp).rulesSource,'colleague');
 storage.saveCalculatorInputs('video',{rulesSource:'colleague',ratingZone:3});
 assert.equal(storage.loadCalculatorInputs('video',{rulesSource:'our',ratingZone:3},clamp).rulesSource,'our');
 assert.equal(storage.loadCalculationHistory('service')[0].totalPay,123);
 console.log('Primary source selection and working-form migration passed.');
+
+// IRON tests never add an hour, even if an old saved form still supplies true.
+for(const source of [originalPayload,payload]) {
+  configurePayrollData(structuredClone(source));
+  const input={...getDefaultInputs('iron'),actualHours:134.5,testsHigh:false};
+  const withoutTests=calculatePayroll(input,'iron');
+  const withTests=calculatePayroll({...input,testsHigh:true},'iron');
+  assert.equal(withTests.effectiveHours,134.5);
+  assert.equal(withTests.totalPay,withoutTests.totalPay);
+  const service={...getDefaultInputs('service'),actualHours:134.5,testsHigh:true};
+  assert.equal(calculatePayroll(service,'service').effectiveHours,135.5);
+}
+console.log('IRON ignores test bonus in both rule sets; saved forms clear the flag and service keeps its extra hour.');

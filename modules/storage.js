@@ -109,8 +109,8 @@ function migrateSavedInputs(type, saved, defaults) {
       saved.level = defaults.level;
     }
   }
+  if (type === "iron") saved.testsHigh = false;
   if (type === "iron" && saved.rulesSource === 'our') {
-    saved.testsHigh = false;
     if (Number(saved.firstHalfHours) === 82.5) saved.firstHalfHours = defaults.firstHalfHours;
     if (Number(saved.secondHalfHours) === 82.5) saved.secondHalfHours = defaults.secondHalfHours;
   }

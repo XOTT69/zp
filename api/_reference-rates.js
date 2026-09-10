@@ -26,7 +26,7 @@ export function makeReferenceCalculators(existing) {
       }
     }),
     xd: common('ХД',17730,five([32070,28430,24850,21230,17620]),42570,{hasTests:false,hasNight:false,hasDouble:false}),
-    iron: common('IRON',22240,five([35570,33370,31160,28800,26740]),53410,{levelBonusByLevelAndZone:matrix(2400,4800)}),
+    iron: common('IRON',22240,five([35570,33370,31160,28800,26740]),53410,{hasTests:false,levelBonusByLevelAndZone:matrix(2400,4800)}),
     sz: common('СЗ',36470,{1:24300,3:21860,4:19460,5:16990},58330,{
       ratingZones:[1,3,4,5],scheduleOptions:[{value:'2/2',label:'2/2'}]
     }),
