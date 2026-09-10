@@ -3,12 +3,13 @@ import {randomUUID} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {redis} from '../api/_redis.js';
 import {VERIFY_CHALLENGE_SCRIPT} from '../api/_slack-auth.js';
+import {CHECKPOINT_DIRECTORY,PUBLISH_DIRECTORY,RELEASE_DIRECTORY} from '../api/_slack-directory.js';
 import {REMEMBER_PROFILE_SCRIPT} from '../api/_slack-profile.js';
 
 // Explicit integration check. Only isolated random test keys are written.
 export async function verifyRedisOtp() {
   const prefix = `zp:integration:otp:${randomUUID()}`;
-  const keys = ['single','attempts','concurrent','expired','binding'].map(suffix=>`${prefix}:${suffix}`);
+  const keys = ['single','attempts','concurrent','expired','binding','lease','snapshot','job'].map(suffix=>`${prefix}:${suffix}`);
   const record = JSON.stringify({digest:'integration-test-digest',attempts:0});
   const verify = async(key,digest='integration-test-digest') =>
     (await redis([['EVAL',VERIFY_CHALLENGE_SCRIPT,1,key,digest]]))[0];
@@ -34,6 +35,17 @@ export async function verifyRedisOtp() {
     assert.equal(await bind('UBOB'),0);
     assert.equal(await bind('UALICE'),1);
     assert.equal((await redis([['GET',keys[4]]]))[0],'UALICE');
+    await redis([['SET',keys[5],'owner','EX',60]]);
+    const checkpoint=owner=>redis([['EVAL',CHECKPOINT_DIRECTORY,2,keys[5],keys[7],owner,'checkpoint',60]]);
+    assert.deepEqual(await checkpoint('other'),[0]);
+    assert.deepEqual(await checkpoint('owner'),[1]);
+    assert.deepEqual(await redis([['EVAL',PUBLISH_DIRECTORY,3,keys[5],keys[6],keys[7],'other','complete',60]]),[0]);
+    assert.deepEqual(await redis([['GET',keys[7]]]),['checkpoint']);
+    assert.deepEqual(await redis([['EVAL',PUBLISH_DIRECTORY,3,keys[5],keys[6],keys[7],'owner','complete',60]]),[1]);
+    assert.deepEqual(await redis([['GET',keys[6]],['GET',keys[7]]]),['complete',null]);
+    assert.deepEqual(await redis([['EVAL',RELEASE_DIRECTORY,1,keys[5],'other']]),[0]);
+    assert.deepEqual(await redis([['EVAL',RELEASE_DIRECTORY,1,keys[5],'owner']]),[1]);
+    console.log('[Redis directory] Lease fencing, atomic publish, checkpoint and release passed.');
     console.log('[Redis OTP] Single use, attempt limit, expiry, concurrent consumption and binding collision checks passed.');
   } finally {
     await redis([['DEL',...keys]]);

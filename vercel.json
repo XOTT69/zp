@@ -121,5 +121,16 @@
         }
       ]
     }
+  ],
+  "functions": {
+    "api/corporate-auth.js": {
+      "maxDuration": 300
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/corporate-auth?action=directory-sync",
+      "schedule": "0 3 * * *"
+    }
   ]
 }

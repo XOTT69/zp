@@ -1,46 +1,31 @@
-import {createHmac} from 'node:crypto';
 import {redis} from './_redis.js';
 import {slack} from './_slack-api.js';
-
+import {normalizeProfileLogin,loginKey,eligible,checkField} from './_slack-profile-fields.js';
+import {directoryEnabled,lookupDirectory} from './_slack-directory.js';
+export {profileIdentityEnabled,profileIdentityConfigured,normalizeProfileLogin} from './_slack-profile-fields.js';
 const BINDING_TTL = 30 * 24 * 60 * 60;
-export function profileIdentityEnabled() { return (process.env.SLACK_IDENTITY_MODE || 'profile') === 'profile'; }
-export function profileIdentityConfigured() {
-  return Boolean(process.env.SLACK_TEAM_ID && process.env.SLACK_LDAP_FIELD_ID && process.env.AUTH_SECRET);
-}
-export function normalizeProfileLogin(value) {
-  if (typeof value !== 'string') return null;
-  const login = value.trim().toLowerCase();
-  return /^[a-z0-9._-]{2,80}$/.test(login) ? login : null;
-}
 function bindingKey(login) { return `zp:slack-login:v2:${process.env.SLACK_TEAM_ID}:${process.env.SLACK_LDAP_FIELD_ID}:${loginKey(login)}`; }
-function loginKey(login) { return createHmac('sha256',process.env.AUTH_SECRET).update(`slack-profile:${login}`).digest('hex'); }
-function eligible(user) {
-  return /^[UW][A-Z0-9]+$/.test(user?.id || '') && user.team_id === process.env.SLACK_TEAM_ID &&
-    !user.deleted && !user.is_bot && !user.is_app_user && !user.is_restricted && !user.is_ultra_restricted;
-}
-async function checkField(send) {
-  if (!profileIdentityConfigured()) throw new Error('Slack profile identity is not configured');
-  const auth = await send('auth.test',{});
-  if (auth.team_id !== process.env.SLACK_TEAM_ID) throw new Error('Unexpected Slack workspace');
-  const result = await send('team.profile.get',{});
-  const field = result.profile?.fields?.find(item=>item.id === process.env.SLACK_LDAP_FIELD_ID);
-  if (!field) throw new Error('LDAP profile field is missing');
-  // The owner may attest that IT controls editing outside this API flag. Scope
-  // that trust to an exact workspace/field pair; never infer it from a login.
-  const attested = process.env.SLACK_LDAP_FIELD_ATTESTATION === `${process.env.SLACK_TEAM_ID}:${field.id}`;
-  if (field.options?.is_protected !== true && !attested) throw new Error('LDAP profile field needs administrator protection or owner attestation');
-}
 
-// No directory scan. Website requests use only an existing server binding.
-// Internal callers may select a candidate, but current workspace, account, LDAP
-// and OTP still prove identity. Candidate IDs are never accepted from the form.
+// Directory entries are candidates only: current account and LDAP are checked
+// before sending an OTP and again before creating a session.
 export async function findSlackProfileUser(login,{send=slack,store=redis,slackUserId}={}) {
   login = normalizeProfileLogin(login);
   if (!login) return null;
   await checkField(send);
   const [boundId] = await store([['GET',bindingKey(login)]]);
   if (boundId && slackUserId && boundId !== slackUserId) return null;
-  const id = boundId || slackUserId;
+  let candidate;
+  if (directoryEnabled()) {
+    const match = await lookupDirectory(login,{store});
+    if (match.duplicate) return null;
+    if (match.id && (boundId || slackUserId) && match.id !== (boundId || slackUserId)) return null;
+    candidate = match.id;
+    if (!candidate && !boundId && !slackUserId) {
+      if (match.pending) { const error=new Error('Slack directory is updating');error.code='SLACK_DIRECTORY_PENDING';throw error; }
+      return null;
+    }
+  }
+  const id = candidate || boundId || slackUserId;
   if (!id) {
     const error = new Error('Slack account connection is required');
     error.code = 'SLACK_CONNECTION_REQUIRED';
