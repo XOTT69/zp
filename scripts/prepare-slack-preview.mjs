@@ -7,7 +7,7 @@ if (process.env.VERCEL_ENV === 'preview' && process.env.SLACK_BOT_TOKEN && !proc
     const auth = await slack('auth.test');
     const result = await slack('team.profile.get');
     const ldapFields = (result.profile?.fields || []).filter(field=>field.label?.trim().toLowerCase() === 'ldap')
-      .map(field=>({id:field.id,label:field.label,protected:field.options?.is_protected === true}));
+      .map(field=>({id:field.id,label:field.label,protected:field.options?.is_protected ?? null,isScim:field.options?.is_scim ?? null}));
     console.log('[Slack setup]',JSON.stringify({teamId:auth.team_id,ldapFields}));
   } catch (error) {
     console.error('[Slack setup]',error.message);

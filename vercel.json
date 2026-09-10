@@ -1,6 +1,7 @@
 {
   "cleanUrls": true,
   "buildCommand": "node scripts/prepare-slack-preview.mjs",
+  "outputDirectory": ".",
   "rewrites": [
     {
       "source": "/",
