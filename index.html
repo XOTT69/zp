@@ -69,7 +69,8 @@
           <h2 id="accessTitle">Вхід у калькулятор</h2>
           <p>Увійдіть, щоб рахувати й порівнювати всі напрямки.</p>
           <form id="corporateLogin" class="access-form" hidden>
-            <label><span>Робочий логін</span><input name="login" autocomplete="username" required maxlength="80" /></label>
+            <label><span>Робочий логін (LDAP)</span><input name="login" autocomplete="username" required maxlength="80" /></label>
+            <p>Введіть LDAP із вашого профілю Slack. Код надійде в особисті повідомлення.</p>
             <label id="otpField" hidden><span>Одноразовий код зі Slack</span><input name="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" /></label>
             <button class="primary-button" type="submit">Отримати код у Slack</button>
             <button id="restartOtp" type="button" class="ghost-button" hidden>Інший логін / новий код</button>

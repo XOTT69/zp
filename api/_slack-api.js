@@ -7,11 +7,17 @@ export async function slack(method, body = {}) {
     body: json ? JSON.stringify(body) : new URLSearchParams(body),
     signal: AbortSignal.timeout(7000)
   });
+  if(response.status===429) {
+    const error=new Error('Slack rate limit');
+    const seconds=Number(response.headers.get('retry-after'));
+    error.retryAfter=Number.isFinite(seconds) && seconds>0 ? seconds : 60;
+    throw error;
+  }
   const result = await response.json();
   if (response.ok && method === 'users.lookupByEmail' && result.error === 'users_not_found') return {user:null};
   if (!response.ok || !result.ok) {
     const code = /^[a-z_]{1,80}$/.test(result.error || '') ? result.error : `http_${response.status}`;
-    throw new Error(`Slack request failed: ${code}`);
+    const error=new Error(`Slack request failed: ${code}`);error.code=code;throw error;
   }
   return result;
 }
