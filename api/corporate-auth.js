@@ -18,7 +18,7 @@ export default async function handler(req,res) {
   }
   if(req.method !== 'POST') return jsonResponse(res,405,{error:'Method not allowed'});
   try { req.body=await readJsonBody(req); } catch { return jsonResponse(res,400,{error:'Невірний запит.'}); }
-  if(req.body.action === 'request') return requestCode(req,res);
+  if(req.body.action === 'request' || req.body.action === 'poll') return requestCode(req,res);
   if(req.body.action === 'verify') return verifyCode(req,res);
   return jsonResponse(res,400,{error:'Невідома дія.'});
 }

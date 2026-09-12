@@ -32,9 +32,8 @@ export async function findSlackProfileUser(login,{send=slack,store=redis,slackUs
     throw error;
   }
   if (!/^[UW][A-Z0-9]{2,79}$/.test(id)) return null;
-  const {user} = await send('users.info',{user:id});
+  const [{user},{profile}]=await Promise.all([send('users.info',{user:id}),send('users.profile.get',{user:id})]);
   if (!eligible(user) || user.id !== id) return null;
-  const {profile} = await send('users.profile.get',{user:id});
   if (normalizeProfileLogin(profile?.fields?.[process.env.SLACK_LDAP_FIELD_ID]?.value) !== login) return null;
   return user;
 }
