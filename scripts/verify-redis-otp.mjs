@@ -1,3 +1,4 @@
+import {queueCodeRequest,pollCodeRequest} from '../api/_slack-code-queue.js';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
@@ -45,6 +46,17 @@ export async function verifyRedisOtp() {
     assert.deepEqual(await redis([['GET',keys[6]],['GET',keys[7]]]),['complete',null]);
     assert.deepEqual(await redis([['EVAL',RELEASE_DIRECTORY,1,keys[5],'other']]),[0]);
     assert.deepEqual(await redis([['EVAL',RELEASE_DIRECTORY,1,keys[5],'owner']]),[1]);
+    const queueTime=Date.now();
+    const ticket=await queueCodeRequest('integration.test','192.0.2.1',{now:()=>queueTime});
+    keys.push(`zp:otp:queued:${ticket.requestId}`,`zp:otp:queued:${ticket.requestId}:lock`);
+    let deliveries=0;
+    const queueDeps={now:()=>queueTime+6000,start:async()=>{deliveries++;return {status:200,id:'a'.repeat(48),expiresIn:300};}};
+    const polls=await Promise.all(Array.from({length:4},()=>pollCodeRequest(ticket.requestId,queueDeps)));
+    assert.equal(deliveries,1);
+    assert.ok(polls.some(result=>result.id==='a'.repeat(48)));
+    assert.equal((await pollCodeRequest(ticket.requestId,queueDeps)).id,'a'.repeat(48));
+    assert.equal(deliveries,1);
+    console.log('[Redis code queue] Concurrent polling issues once and replays the ready result. Slack delivery mocked.');
     console.log('[Redis directory] Lease fencing, atomic publish, checkpoint and release passed.');
     console.log('[Redis OTP] Single use, attempt limit, expiry, concurrent consumption and binding collision checks passed.');
   } finally {

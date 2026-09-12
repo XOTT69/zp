@@ -1,3 +1,4 @@
+import {requestSlackCode} from './modules/slack-login.js?v=1';
 import { defaultRulesSource, withColleagueRules } from './modules/rule-sources.js?v=68';
 import { mountRateEditor } from './modules/admin-rate-editor.js?v=68';
 import { parseHours, validatePayrollInputs } from "./modules/input-validation.js?v=68";
@@ -1889,22 +1890,31 @@ async function initCorporateLogin() {
   const message=document.querySelector('#corporateError');
   const otpField=document.querySelector('#otpField');
   const restart=document.querySelector('#restartOtp');
-  let challengeId=null;
+  let challengeId=null, codeRequest=null, loginAttempt=0;
   try {
     const response=await fetch('/api/corporate-auth'); const options=await response.json();
     if(!response.ok) return;
     corporate.hidden=!options.ldapSlack; accessForm.hidden=!options.roleCode;
     if(!options.ldapSlack && !options.roleCode) { const notice=document.createElement('p');notice.className='notice warning';notice.textContent='Зверніться до адміністратора для налаштування входу.';corporate.before(notice); }
   } catch { return; }
-  restart.addEventListener('click',()=>{challengeId=null;otpField.hidden=true;restart.hidden=true;corporate.elements.login.readOnly=false;corporate.elements.otp.value='';corporate.querySelector('[type=submit]').textContent='Отримати код у Slack';});
+  restart.addEventListener('click',()=>{loginAttempt++;codeRequest?.abort();codeRequest=null;message.textContent='';corporate.querySelector('[type=submit]').disabled=false;challengeId=null;otpField.hidden=true;restart.hidden=true;corporate.elements.login.readOnly=false;corporate.elements.otp.value='';corporate.querySelector('[type=submit]').textContent='Отримати код у Slack';});
   corporate.addEventListener('submit',async event=>{
-    event.preventDefault(); const button=corporate.querySelector('[type=submit]'); button.disabled=true;
+    event.preventDefault(); const attempt=++loginAttempt;const button=corporate.querySelector('[type=submit]'); button.disabled=true;
     try {
-      const response=await fetch('/api/corporate-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(challengeId?{action:'verify',challengeId,code:corporate.elements.otp.value}:{action:'request',login:corporate.elements.login.value})});
-      const data=await response.json();
-      if(!response.ok) throw new Error(data.error || 'Спробуйте ще раз.');
+      let data;
+      if(challengeId) {
+        const response=await fetch('/api/corporate-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',challengeId,code:corporate.elements.otp.value})});
+        data=await response.json();if(!response.ok) throw new Error(data.error || 'Спробуйте ще раз.');
+      } else {
+        const controller=new AbortController();codeRequest=controller;
+        corporate.elements.login.readOnly=true;restart.hidden=false;button.textContent='Надсилаємо код…';message.textContent='';
+        data=await requestSlackCode(corporate.elements.login.value,{signal:controller.signal,onPending:text=>{message.textContent=text;button.textContent='Шукаємо акаунт…';}});
+        if(controller.signal.aborted) return;
+        codeRequest=null;
+      }
+      if(attempt!==loginAttempt) return;
       if(data.authenticated) { corporate.reset(); await hydrateSession(); navigateTo('/'+firstAllowedCalculator()); }
       else {challengeId=data.challengeId;otpField.hidden=false;restart.hidden=false;corporate.elements.login.readOnly=true;corporate.elements.otp.focus();button.textContent='Увійти';message.textContent=data.message;}
-    } catch(error) {message.textContent=error.message;} finally {button.disabled=false;}
+    } catch(error) {if(attempt!==loginAttempt || error.name==='AbortError') return;message.textContent=error.message;codeRequest=null;if(!challengeId) {corporate.elements.login.readOnly=false;button.textContent='Отримати код у Slack';}} finally {if(attempt===loginAttempt && !codeRequest) button.disabled=false;}
   });
 }

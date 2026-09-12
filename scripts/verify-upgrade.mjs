@@ -75,7 +75,7 @@ assert.equal(challenge.status,200);assert.equal(messages[1].body.channel,'U_TEST
 const code=messages[1].body.text.match(/\d{6}/)[0];const stored=JSON.parse(values.get(`zp:otp:${challenge.id}`));assert.equal(stored.digest,challengeDigest(challenge.id,code));assert.ok(!JSON.stringify(challenge).includes(code));
 assert.equal((await finishChallenge(challenge.id,code,{store,directory,send})).sub,'test.user');assert.equal(await finishChallenge(challenge.id,code,{store,directory,send}),null);
 const previousMessages=messages.length;await startChallenge('unknown','192.0.2.2',{directory:async()=>null,store,send});assert.equal(messages.length,previousMessages);
-assert.equal((await startChallenge('limited','192.0.2.3',{store:async()=>[11,1,'OK'],directory,send})).status,429);
+assert.equal((await startChallenge('limited','192.0.2.3',{store:async()=>[301,1,1,1],directory,send})).status,429);
 console.log(`Upgrade verification passed: ${cases} reference payroll cases, access, hours, snapshots, version selection, session revocation and mocked OTP transport.`);
 
 const storage = await import('../modules/storage.js');

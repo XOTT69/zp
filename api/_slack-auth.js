@@ -34,16 +34,23 @@ async function findLoginIdentity(login,{directory,send,store,slackUserId}) {
   const user = await findRecipient(account,{send,store,slackUserId});
   return user?.id ? {account,user} : null;
 }
-export async function startChallenge(login,ip,{directory=findDirectoryAccount,store=redis,send=slack,slackUserId}={}) {
+export async function startChallenge(login,ip,{directory=findDirectoryAccount,store=redis,send=slack,slackUserId,skipAttemptLimit=false}={}) {
   const id=randomBytes(24).toString('hex');
   const key=challengeDigest('login',login);
   const ipKey=challengeDigest('ip',ip);
-  const limits=await store([['INCR',`zp:otp:ip:${ipKey}`],['EXPIRE',`zp:otp:ip:${ipKey}`,900,'NX'],['SET',`zp:otp:cooldown:${key}`,'1','EX',60,'NX']]);
-  if(Number(limits[0])>10 || limits[2] !== 'OK') return {status:429,retryAfter:60};
+  if(!skipAttemptLimit) {
+    // Offices share an IP. Apply the strict abuse limit to the target login,
+    // with a separate high-volume network limit, not ten coworkers per 15 min.
+    const limits=await store([['INCR',`zp:otp:network:v2:${ipKey}`],['EXPIRE',`zp:otp:network:v2:${ipKey}`,60,'NX'],['INCR',`zp:otp:login-attempts:${key}`],['EXPIRE',`zp:otp:login-attempts:${key}`,900,'NX']]);
+    if(Number(limits[0])>300) return {status:429,retryAfter:60,reason:'network'};
+    if(Number(limits[2])>5) return {status:429,retryAfter:900,reason:'login'};
+  }
+  const [reserved]=await store([['SET',`zp:otp:cooldown:${key}`,'1','EX',60,'NX']]);
+  if(reserved!=='OK') return {status:429,retryAfter:60,reason:'cooldown'};
   let identity;
   try { identity = await findLoginIdentity(login,{directory,send,store,slackUserId}); }
   catch (error) {
-    if (['SLACK_CONNECTION_REQUIRED','SLACK_DIRECTORY_PENDING'].includes(error.code)) await store([['DEL',`zp:otp:cooldown:${key}`]]);
+    if (['SLACK_CONNECTION_REQUIRED','SLACK_DIRECTORY_PENDING'].includes(error.code) || error.retryAfter) await store([['DEL',`zp:otp:cooldown:${key}`]]);
     throw error;
   }
   // Identical successful shape for an unknown identifier; never disclose directory membership.

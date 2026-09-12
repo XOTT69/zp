@@ -16,13 +16,19 @@ function validSnapshot(value,now) {
   return value?.version===1 && Number.isFinite(value.createdAt) && value.createdAt<=now && now-value.createdAt<RETENTION*1000 && value.entries && typeof value.entries==='object';
 }
 export async function lookupDirectory(login,{store=redis,now=Date.now}={}) {
-  const [raw]=await store([['GET',directoryKeys().snapshot]]);
-  const snapshot=decode(raw), time=now();
-  if(!validSnapshot(snapshot,time)) return {pending:true};
-  const key=loginKey(login), exists=Object.hasOwn(snapshot.entries,key), id=snapshot.entries[key];
-  if(exists && id===null) return {duplicate:true};
-  if(exists && /^[UW][A-Z0-9]{2,79}$/.test(id || '')) return {id};
-  return {pending:time-snapshot.createdAt>=HOUR};
+  const keys=directoryKeys();
+  const [raw,jobRaw]=await store([['GET',keys.snapshot],['GET',keys.job]]);
+  const snapshot=decode(raw), job=decode(jobRaw), time=now(), key=loginKey(login);
+  const complete=validSnapshot(snapshot,time), partial=job && Number.isFinite(job.startedAt) && time-job.startedAt<RETENTION*1000 && job.startedAt<=time;
+  const old=complete && Object.hasOwn(snapshot.entries,key) ? snapshot.entries[key] : undefined;
+  const current=partial && Object.hasOwn(job.entries || {},key) ? job.entries[key] : undefined;
+  // A discovered entry is a candidate, never authentication. Its current IT
+  // field, active account and ownership via OTP are still required. Known
+  // duplicates/conflicts fail closed, including during an incomplete refresh.
+  if(old===null || current===null || (old && current && old!==current)) return {duplicate:true};
+  const id=current || old;
+  if(/^[UW][A-Z0-9]{2,79}$/.test(id || '')) return {id};
+  return {pending:!complete || time-snapshot.createdAt>=HOUR};
 }
 // A lease owner alone can checkpoint or publish. Interrupted slices resume from
 // their last checkpoint; an incomplete scan never replaces the live snapshot.
@@ -40,7 +46,7 @@ export async function runDirectoryBatch({send=slack,store=redis,pause=ms=>new Pr
     const snapshot=decode(rawSnapshot);
     let job=decode(rawJob);
     if(!job && validSnapshot(snapshot,now()) && now()-snapshot.createdAt<(force?HOUR:24*HOUR)) return {fresh:true};
-    if(!job || now()-job.startedAt>24*HOUR) job={startedAt:now(),cursor:'',pending:[],seen:[],cursors:[],entries:{},scanned:0,pages:0,end:false};
+    if(!job || now()-job.startedAt>RETENTION*1000) job={startedAt:now(),cursor:'',pending:[],seen:[],cursors:[],entries:{},scanned:0,pages:0,end:false};
     if(job.retryAt>now()) return {pending:true,retryAfter:Math.ceil((job.retryAt-now())/1000)};
     await checkField(send);
     const start=now(), seen=new Set(job.seen); let count=0;
@@ -81,12 +87,16 @@ export async function runDirectoryBatch({send=slack,store=redis,pause=ms=>new Pr
         // Leave capacity for interactive users.profile.get requests.
         await pause(900);
       }
-      job.retryAt=0;
+      job.retryAt=0;job.failures=0;
     } catch(error) {
-      if(error.retryAfter) job.retryAt=now()+Math.min(3600,Math.max(1,error.retryAfter))*1000;
+      if(error.code==='invalid_cursor') {
+        job.cursor='';job.cursors=[];job.end=false;job.retryAt=now()+3000;
+      } else if(error.retryAfter) job.retryAt=now()+Math.min(3600,Math.max(1,error.retryAfter))*1000;
       else { // Save progress before surfacing a transient error; never log profiles.
         job.seen=[...seen];await store([['EVAL',CHECKPOINT_DIRECTORY,2,keys.lock,keys.job,token,JSON.stringify(job),RETENTION]]);
-        throw error;
+        job.failures=(job.failures || 0)+1;
+        if(job.failures>5) throw error;
+        job.retryAt=now()+Math.min(120,job.failures*15)*1000;
       }
     }
     job.seen=[...seen];
